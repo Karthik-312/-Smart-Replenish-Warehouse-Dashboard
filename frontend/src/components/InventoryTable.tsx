@@ -1,4 +1,4 @@
-import { AlertTriangle, Minus, Plus } from 'lucide-react';
+import { AlertTriangle, Lock, Minus, Plus } from 'lucide-react';
 import type { InventoryItem, StockStatus } from '../api/inventory';
 
 interface InventoryTableProps {
@@ -53,7 +53,7 @@ export default function InventoryTable({
         <table className="min-w-full divide-y divide-slate-200">
           <thead className="bg-slate-50">
             <tr>
-              {['Product', 'SKU', 'Category', 'Stock', 'Min Threshold', 'Status', ...(readonly ? [] : ['Quick Update'])].map(
+              {['Product', 'SKU', 'Category', 'Stock', 'Min Threshold', 'Status', 'Quick Update'].map(
                 (header) => (
                   <th
                     key={header}
@@ -105,32 +105,35 @@ export default function InventoryTable({
                       {styles.label}
                     </span>
                   </td>
-                  {!readonly && (
-                    <td className="whitespace-nowrap px-4 py-4">
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          disabled={isAdjusting || item.currentStock <= 0}
-                          onClick={() => onAdjust(item.id, -1)}
-                          title="Simulate sale"
-                          className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                          <Minus className="h-3.5 w-3.5" />
-                          Sale
-                        </button>
-                        <button
-                          type="button"
-                          disabled={isAdjusting}
-                          onClick={() => onAdjust(item.id, 1)}
-                          title="Simulate intake"
-                          className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                          <Plus className="h-3.5 w-3.5" />
-                          Intake
-                        </button>
-                      </div>
-                    </td>
-                  )}
+                  <td className="whitespace-nowrap px-4 py-4">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={readonly || isAdjusting || item.currentStock <= 0}
+                        onClick={() => onAdjust(item.id, -1)}
+                        title={readonly ? 'Login to enable' : 'Simulate sale'}
+                        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        <Minus className="h-3.5 w-3.5" />
+                        Sale
+                      </button>
+                      <button
+                        type="button"
+                        disabled={readonly || isAdjusting}
+                        onClick={() => onAdjust(item.id, 1)}
+                        title={readonly ? 'Login to enable' : 'Simulate intake'}
+                        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        Intake
+                      </button>
+                      {readonly && (
+                        <span title="Login required">
+                          <Lock className="h-3.5 w-3.5 text-slate-400" />
+                        </span>
+                      )}
+                    </div>
+                  </td>
                 </tr>
               );
             })}
