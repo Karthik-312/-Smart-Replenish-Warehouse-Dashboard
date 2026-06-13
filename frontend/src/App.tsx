@@ -1,14 +1,19 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Boxes, Zap } from 'lucide-react';
 import {
   adjustStock,
+  createItem,
   fetchInventory,
   fetchSummary,
   type InventoryItem,
   type InventorySummary,
 } from './api/inventory';
+import AddItemForm from './components/AddItemForm';
+import InventoryFilters, { type InventoryFilterState } from './components/InventoryFilters';
 import InventoryTable from './components/InventoryTable';
+import LowStockBanner from './components/LowStockBanner';
 import StatusOverview, { RefreshButton } from './components/StatusOverview';
+import { filterInventory, uniqueCategories } from './utils/filterInventory';
 
 const emptySummary: InventorySummary = {
   totalItems: 0,
@@ -16,12 +21,20 @@ const emptySummary: InventorySummary = {
   outOfStockItems: 0,
 };
 
+const defaultFilters: InventoryFilterState = {
+  search: '',
+  category: 'ALL',
+  status: 'ALL',
+};
+
 export default function App() {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [summary, setSummary] = useState<InventorySummary>(emptySummary);
   const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
   const [adjustingId, setAdjustingId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [filters, setFilters] = useState<InventoryFilterState>(defaultFilters);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -41,6 +54,13 @@ export default function App() {
     void loadData();
   }, [loadData]);
 
+  const categories = useMemo(() => uniqueCategories(items), [items]);
+  const filteredItems = useMemo(() => filterInventory(items, filters), [items, filters]);
+  const alertItems = useMemo(
+    () => items.filter((item) => item.status === 'LOW' || item.status === 'OUT_OF_STOCK'),
+    [items],
+  );
+
   const handleAdjust = async (id: number, delta: number) => {
     setAdjustingId(id);
     setError(null);
@@ -51,6 +71,17 @@ export default function App() {
       setError(err instanceof Error ? err.message : 'Failed to update stock');
     } finally {
       setAdjustingId(null);
+    }
+  };
+
+  const handleCreate = async (item: Omit<InventoryItem, 'id' | 'status'>) => {
+    setCreating(true);
+    setError(null);
+    try {
+      await createItem(item);
+      await loadData();
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -81,7 +112,19 @@ export default function App() {
           </div>
         )}
 
+        {!loading && <LowStockBanner items={alertItems} />}
+
         <StatusOverview summary={summary} loading={loading} />
+
+        <AddItemForm categories={categories} onSubmit={handleCreate} submitting={creating} />
+
+        <InventoryFilters
+          filters={filters}
+          categories={categories}
+          onChange={setFilters}
+          resultCount={filteredItems.length}
+          totalCount={items.length}
+        />
 
         <section>
           <div className="mb-4 flex items-center gap-2">
@@ -93,7 +136,14 @@ export default function App() {
               Loading inventory...
             </div>
           ) : (
-            <InventoryTable items={items} onAdjust={handleAdjust} adjustingId={adjustingId} />
+            <InventoryTable
+              items={filteredItems}
+              onAdjust={handleAdjust}
+              adjustingId={adjustingId}
+              hasFilters={
+                filters.search !== '' || filters.category !== 'ALL' || filters.status !== 'ALL'
+              }
+            />
           )}
         </section>
       </main>

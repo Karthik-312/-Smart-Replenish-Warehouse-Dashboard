@@ -1,6 +1,23 @@
 # StockPulse
 
-Professional inventory replenishment system with a Spring Boot backend and React dashboard.
+Professional inventory replenishment dashboard with automatic low-stock alerts, search/filter, and product management. Built with **Spring Boot** and **React**.
+
+![Dashboard](docs/screenshots/dashboard.png)
+
+## Features
+
+- **Live status overview** — total items, low stock, and out-of-stock counts at a glance
+- **Low-stock alert banners** — surfaces SKUs that need reordering directly on the dashboard
+- **Add products from the UI** — create inventory without touching the API
+- **Search & filter** — by name, SKU, category, or stock status
+- **Quick stock adjustments** — simulate sales and intake with one click
+- **Automatic status logic** — Healthy / Low / Out of Stock recalculated on every change
+
+## Screenshots
+
+| Dashboard | Add product form | Search & filter |
+|-----------|------------------|-----------------|
+| ![Dashboard](docs/screenshots/dashboard.png) | ![Add item](docs/screenshots/add-item-form.png) | ![Filters](docs/screenshots/search-filter.png) |
 
 ## Tech Stack
 
@@ -8,23 +25,27 @@ Professional inventory replenishment system with a Spring Boot backend and React
 |----------|-------------------------------------------------|
 | Backend  | Java 21, Spring Boot 3.x, Spring Data JPA, H2   |
 | Build    | Gradle                                          |
-| Frontend | React (Vite), Tailwind CSS, Lucide React        |
+| Frontend | React (Vite), TypeScript, Tailwind CSS          |
 | API      | REST / JSON                                     |
+| Hosting  | Vercel (frontend) + Render (backend) — free tier |
 
 ## Project Structure
 
 ```
 stockpulse-inventory/
-├── backend/     # Spring Boot API (port 8080)
-└── frontend/    # React dashboard (port 5173)
+├── backend/              # Spring Boot API
+├── frontend/             # React dashboard
+├── docs/screenshots/     # README images
+├── render.yaml           # Render blueprint
+└── scripts/              # Screenshot capture utility
 ```
 
 ## Prerequisites
 
-- **JDK 21** (Gradle toolchain will use Java 21)
+- **JDK 21**
 - **Node.js 18+**
 
-## Running the Application
+## Running Locally
 
 ### Backend
 
@@ -34,9 +55,7 @@ cd backend
 gradlew.bat bootRun      # Windows
 ```
 
-API base URL: `http://localhost:8080/api/inventory`
-
-H2 console (dev): `http://localhost:8080/h2-console`
+API: `http://localhost:8080/api/inventory`
 
 ### Frontend
 
@@ -63,49 +82,41 @@ Dashboard: `http://localhost:5173`
 ## Stock Status Logic
 
 - **Healthy** — `currentStock > minThreshold`
-- **Low** — `0 < currentStock <= minThreshold` → console: `REORDER ALERT: [SKU] is low!`
+- **Low** — `0 < currentStock <= minThreshold`
 - **Out of Stock** — `currentStock <= 0`
 
-Status is recalculated automatically on create, update, and stock adjustments.
+Status is recalculated on create, update, and stock adjustments. Low/out-of-stock transitions trigger server-side reorder alerts and appear in the dashboard banner.
 
-## CORS
+## Live Demo
 
-The backend allows requests from origins listed in `CORS_ALLOWED_ORIGINS` (default: `http://localhost:5173`).
+- **Dashboard:** https://smart-replenish-warehouse-dashboard.vercel.app
+- **API:** https://stockpulse-api-haxr.onrender.com/api/inventory
 
-## Deploy for Free (No PostgreSQL)
+> Free tier — first request may take ~30s while the backend wakes up.
 
-This project keeps the built-in **H2 in-memory database** — no external database signup required. On each backend start, sample inventory is loaded from `data.sql`. Changes you make in the dashboard reset when the Render free service restarts or wakes from sleep; that is fine for a portfolio demo.
+## Deploy Your Own (Free)
 
-| Service  | Platform | What it hosts        |
-|----------|----------|----------------------|
-| Frontend | Vercel   | React dashboard      |
-| Backend  | Render   | Spring Boot API      |
+No external database required — uses H2 in-memory with sample data on startup.
 
-### 1. Deploy the backend (Render)
+### Backend on Render
 
-1. Push this repo to GitHub.
-2. In [Render](https://render.com), create a **Blueprint** from the repo (uses `render.yaml`), or add a **Web Service** manually:
-   - **Root directory:** `backend`
-   - **Build command:** `./gradlew clean build -x test`
-   - **Start command:** `java -jar build/libs/stockpulse-1.0.0.jar`
-3. Set environment variables:
-   - `SPRING_PROFILES_ACTIVE` = `prod`
-   - `CORS_ALLOWED_ORIGINS` = your Vercel URL (e.g. `https://your-app.vercel.app`)
-4. After deploy, note the API URL, e.g. `https://stockpulse-api.onrender.com`.
+1. Fork/push this repo to GitHub
+2. [render.com](https://render.com) → **New Blueprint** → connect repo → branch `main`
+3. Set `CORS_ALLOWED_ORIGINS` = your Vercel URL
+4. Deploy
 
-Free tier note: the service sleeps after ~15 minutes of inactivity and takes ~30 seconds to wake on the first request.
+### Frontend on Vercel
 
-### 2. Deploy the frontend (Vercel)
+1. [vercel.com](https://vercel.com) → **Add New Project** → import repo
+2. **Root Directory:** `frontend`
+3. Environment variable: `VITE_API_BASE_URL` = `https://YOUR-RENDER-URL.onrender.com/api/inventory`
+4. Deploy
 
-1. In [Vercel](https://vercel.com), import the same GitHub repo.
-2. Set **Root Directory** to `frontend`.
-3. Add environment variable:
-   - `VITE_API_BASE_URL` = `https://your-render-url.onrender.com/api/inventory`
-4. Deploy. Vercel uses `frontend/vercel.json` automatically.
+## Regenerate Screenshots
 
-### 3. Connect them
+With backend and frontend running locally:
 
-1. Copy your live Vercel URL into Render’s `CORS_ALLOWED_ORIGINS`.
-2. Redeploy the backend if you changed CORS after the first deploy.
-
-Local development is unchanged — see **Running the Application** above.
+```bash
+npx playwright install chromium
+node scripts/capture-screenshots.mjs
+```
