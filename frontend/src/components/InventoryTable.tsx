@@ -5,6 +5,7 @@ interface InventoryTableProps {
   items: InventoryItem[];
   onAdjust: (id: number, delta: number) => Promise<void>;
   adjustingId: number | null;
+  hasFilters?: boolean;
 }
 
 const statusStyles: Record<
@@ -28,11 +29,18 @@ const statusStyles: Record<
   },
 };
 
-export default function InventoryTable({ items, onAdjust, adjustingId }: InventoryTableProps) {
+export default function InventoryTable({
+  items,
+  onAdjust,
+  adjustingId,
+  hasFilters = false,
+}: InventoryTableProps) {
   if (items.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center text-slate-500">
-        No inventory items found.
+        {hasFilters
+          ? 'No items match your search or filters. Try clearing filters.'
+          : 'No inventory items found.'}
       </div>
     );
   }
