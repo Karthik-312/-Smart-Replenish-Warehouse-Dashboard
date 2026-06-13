@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: stockpulse-api
+    runtime: java
+    plan: free
+    rootDir: backend
+    buildCommand: ./gradlew clean build -x test
+    startCommand: java -jar build/libs/stockpulse-1.0.0.jar
+    healthCheckPath: /api/inventory/summary
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
