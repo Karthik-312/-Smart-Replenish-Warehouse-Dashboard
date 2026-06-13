@@ -1,11 +1,10 @@
 services:
   - type: web
     name: stockpulse-api
-    runtime: java
+    runtime: docker
     plan: free
     rootDir: backend
-    buildCommand: ./gradlew clean build -x test
-    startCommand: java -jar build/libs/stockpulse-1.0.0.jar
+    dockerfilePath: ./Dockerfile
     healthCheckPath: /api/inventory/summary
     envVars:
       - key: SPRING_PROFILES_ACTIVE
