@@ -70,4 +70,42 @@ Status is recalculated automatically on create, update, and stock adjustments.
 
 ## CORS
 
-The backend allows requests from `http://localhost:5173` via `@CrossOrigin` on the controller and a global CORS config.
+The backend allows requests from origins listed in `CORS_ALLOWED_ORIGINS` (default: `http://localhost:5173`).
+
+## Deploy for Free (No PostgreSQL)
+
+This project keeps the built-in **H2 in-memory database** — no external database signup required. On each backend start, sample inventory is loaded from `data.sql`. Changes you make in the dashboard reset when the Render free service restarts or wakes from sleep; that is fine for a portfolio demo.
+
+| Service  | Platform | What it hosts        |
+|----------|----------|----------------------|
+| Frontend | Vercel   | React dashboard      |
+| Backend  | Render   | Spring Boot API      |
+
+### 1. Deploy the backend (Render)
+
+1. Push this repo to GitHub.
+2. In [Render](https://render.com), create a **Blueprint** from the repo (uses `render.yaml`), or add a **Web Service** manually:
+   - **Root directory:** `backend`
+   - **Build command:** `./gradlew clean build -x test`
+   - **Start command:** `java -jar build/libs/stockpulse-1.0.0.jar`
+3. Set environment variables:
+   - `SPRING_PROFILES_ACTIVE` = `prod`
+   - `CORS_ALLOWED_ORIGINS` = your Vercel URL (e.g. `https://your-app.vercel.app`)
+4. After deploy, note the API URL, e.g. `https://stockpulse-api.onrender.com`.
+
+Free tier note: the service sleeps after ~15 minutes of inactivity and takes ~30 seconds to wake on the first request.
+
+### 2. Deploy the frontend (Vercel)
+
+1. In [Vercel](https://vercel.com), import the same GitHub repo.
+2. Set **Root Directory** to `frontend`.
+3. Add environment variable:
+   - `VITE_API_BASE_URL` = `https://your-render-url.onrender.com/api/inventory`
+4. Deploy. Vercel uses `frontend/vercel.json` automatically.
+
+### 3. Connect them
+
+1. Copy your live Vercel URL into Render’s `CORS_ALLOWED_ORIGINS`.
+2. Redeploy the backend if you changed CORS after the first deploy.
+
+Local development is unchanged — see **Running the Application** above.
