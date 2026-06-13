@@ -1,16 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Boxes, Zap } from 'lucide-react';
+import { Boxes, LogIn, LogOut, Zap } from 'lucide-react';
 import {
   adjustStock,
   createItem,
   fetchInventory,
   fetchSummary,
+  logout,
+  type AuthUser,
   type InventoryItem,
   type InventorySummary,
 } from './api/inventory';
 import AddItemForm from './components/AddItemForm';
 import InventoryFilters, { type InventoryFilterState } from './components/InventoryFilters';
 import InventoryTable from './components/InventoryTable';
+import LoginModal from './components/LoginModal';
 import LowStockBanner from './components/LowStockBanner';
 import StatusOverview, { RefreshButton } from './components/StatusOverview';
 import { filterInventory, uniqueCategories } from './utils/filterInventory';
@@ -27,8 +30,6 @@ const defaultFilters: InventoryFilterState = {
   status: 'ALL',
 };
 
-const READONLY = import.meta.env.VITE_READONLY === 'true';
-
 export default function App() {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [summary, setSummary] = useState<InventorySummary>(emptySummary);
@@ -37,6 +38,10 @@ export default function App() {
   const [adjustingId, setAdjustingId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<InventoryFilterState>(defaultFilters);
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [showLogin, setShowLogin] = useState(false);
+
+  const isLoggedIn = user !== null;
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -64,10 +69,11 @@ export default function App() {
   );
 
   const handleAdjust = async (id: number, delta: number) => {
+    if (!user) return;
     setAdjustingId(id);
     setError(null);
     try {
-      await adjustStock(id, delta);
+      await adjustStock(id, delta, user.token);
       await loadData();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update stock');
@@ -77,14 +83,27 @@ export default function App() {
   };
 
   const handleCreate = async (item: Omit<InventoryItem, 'id' | 'status'>) => {
+    if (!user) return;
     setCreating(true);
     setError(null);
     try {
-      await createItem(item);
+      await createItem(item, user.token);
       await loadData();
     } finally {
       setCreating(false);
     }
+  };
+
+  const handleLogin = (authUser: AuthUser) => {
+    setUser(authUser);
+    setShowLogin(false);
+  };
+
+  const handleLogout = async () => {
+    if (user) {
+      await logout(user.token).catch(() => {});
+    }
+    setUser(null);
   };
 
   return (
@@ -100,7 +119,43 @@ export default function App() {
               <p className="text-sm text-slate-500">Inventory Replenishment System</p>
             </div>
           </div>
-          <RefreshButton onClick={() => void loadData()} loading={loading} />
+          <div className="flex items-center gap-3">
+            {isLoggedIn ? (
+              <>
+                <div className="flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-1.5 ring-1 ring-inset ring-emerald-200">
+                  {user.picture && (
+                    <img
+                      src={user.picture}
+                      alt=""
+                      className="h-6 w-6 rounded-full"
+                      referrerPolicy="no-referrer"
+                    />
+                  )}
+                  <span className="text-xs font-semibold text-emerald-700">
+                    {user.name || user.email}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void handleLogout()}
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Logout
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowLogin(true)}
+                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:from-indigo-700 hover:to-violet-700"
+              >
+                <LogIn className="h-4 w-4" />
+                Login to Edit
+              </button>
+            )}
+            <RefreshButton onClick={() => void loadData()} loading={loading} />
+          </div>
         </div>
       </header>
 
@@ -118,7 +173,7 @@ export default function App() {
 
         <StatusOverview summary={summary} loading={loading} />
 
-        {!READONLY && (
+        {isLoggedIn && (
           <AddItemForm categories={categories} onSubmit={handleCreate} submitting={creating} />
         )}
 
@@ -144,7 +199,7 @@ export default function App() {
               items={filteredItems}
               onAdjust={handleAdjust}
               adjustingId={adjustingId}
-              readonly={READONLY}
+              readonly={!isLoggedIn}
               hasFilters={
                 filters.search !== '' || filters.category !== 'ALL' || filters.status !== 'ALL'
               }
@@ -152,6 +207,10 @@ export default function App() {
           )}
         </section>
       </main>
+
+      {showLogin && (
+        <LoginModal onLogin={handleLogin} onClose={() => setShowLogin(false)} />
+      )}
     </div>
   );
 }
