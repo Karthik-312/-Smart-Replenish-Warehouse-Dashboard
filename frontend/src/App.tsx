@@ -27,6 +27,8 @@ const defaultFilters: InventoryFilterState = {
   status: 'ALL',
 };
 
+const READONLY = import.meta.env.VITE_READONLY === 'true';
+
 export default function App() {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [summary, setSummary] = useState<InventorySummary>(emptySummary);
@@ -116,7 +118,9 @@ export default function App() {
 
         <StatusOverview summary={summary} loading={loading} />
 
-        <AddItemForm categories={categories} onSubmit={handleCreate} submitting={creating} />
+        {!READONLY && (
+          <AddItemForm categories={categories} onSubmit={handleCreate} submitting={creating} />
+        )}
 
         <InventoryFilters
           filters={filters}
@@ -140,6 +144,7 @@ export default function App() {
               items={filteredItems}
               onAdjust={handleAdjust}
               adjustingId={adjustingId}
+              readonly={READONLY}
               hasFilters={
                 filters.search !== '' || filters.category !== 'ALL' || filters.status !== 'ALL'
               }
