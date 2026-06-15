@@ -88,6 +88,30 @@ export async function createItem(item: Omit<InventoryItem, 'id' | 'status'>, tok
   return handleResponse<InventoryItem>(response);
 }
 
+export async function updateItem(
+  id: number,
+  data: Partial<Pick<InventoryItem, 'name' | 'sku' | 'category' | 'minThreshold'>>,
+  token: string,
+): Promise<InventoryItem> {
+  const response = await fetch(`${API_BASE}/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...bearerHeaders(token) },
+    body: JSON.stringify(data),
+  });
+  return handleResponse<InventoryItem>(response);
+}
+
+export async function bulkAdjustStock(
+  ids: number[],
+  delta: number,
+  token: string,
+): Promise<InventoryItem[]> {
+  const results = await Promise.all(
+    ids.map((id) => adjustStock(id, delta, token)),
+  );
+  return results;
+}
+
 export async function deleteItem(id: number, token: string): Promise<void> {
   const response = await fetch(`${API_BASE}/${id}`, {
     method: 'DELETE',
