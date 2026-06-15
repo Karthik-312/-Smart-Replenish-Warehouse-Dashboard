@@ -23,11 +23,14 @@ export interface InventorySummary {
   outOfStockItems: number;
 }
 
+export type UserRole = 'ADMIN' | 'MANAGER' | 'VIEWER';
+
 export interface AuthUser {
   token: string;
   email: string;
   name: string;
   picture: string;
+  role: UserRole;
 }
 
 function bearerHeaders(token: string): Record<string, string> {
@@ -61,9 +64,32 @@ export async function logout(token: string): Promise<void> {
   });
 }
 
+export interface PagedResponse<T> {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+  number: number;
+  size: number;
+}
+
 export async function fetchInventory(): Promise<InventoryItem[]> {
   const response = await fetch(`${API_BASE}`);
   return handleResponse<InventoryItem[]>(response);
+}
+
+export async function fetchInventoryPaged(
+  page: number,
+  size: number,
+  search?: string,
+  category?: string,
+  status?: string,
+): Promise<PagedResponse<InventoryItem>> {
+  const params = new URLSearchParams({ page: String(page), size: String(size) });
+  if (search) params.set('search', search);
+  if (category && category !== 'ALL') params.set('category', category);
+  if (status && status !== 'ALL') params.set('status', status);
+  const response = await fetch(`${API_BASE}/paged?${params}`);
+  return handleResponse<PagedResponse<InventoryItem>>(response);
 }
 
 export async function fetchSummary(): Promise<InventorySummary> {
@@ -118,4 +144,70 @@ export async function deleteItem(id: number, token: string): Promise<void> {
     headers: bearerHeaders(token),
   });
   await handleResponse(response);
+}
+
+export interface Supplier {
+  id: number;
+  name: string;
+  contactEmail: string;
+  phone: string;
+  address: string;
+  notes: string;
+}
+
+const SUPPLIER_BASE =
+  import.meta.env.VITE_API_BASE_URL
+    ? import.meta.env.VITE_API_BASE_URL.replace('/inventory', '/suppliers')
+    : 'http://localhost:8080/api/suppliers';
+
+export async function fetchSuppliers(): Promise<Supplier[]> {
+  const response = await fetch(SUPPLIER_BASE);
+  return handleResponse<Supplier[]>(response);
+}
+
+export async function createSupplier(supplier: Omit<Supplier, 'id'>, token: string): Promise<Supplier> {
+  const response = await fetch(SUPPLIER_BASE, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...bearerHeaders(token) },
+    body: JSON.stringify(supplier),
+  });
+  return handleResponse<Supplier>(response);
+}
+
+export async function updateSupplier(id: number, supplier: Omit<Supplier, 'id'>, token: string): Promise<Supplier> {
+  const response = await fetch(`${SUPPLIER_BASE}/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...bearerHeaders(token) },
+    body: JSON.stringify(supplier),
+  });
+  return handleResponse<Supplier>(response);
+}
+
+export async function deleteSupplier(id: number, token: string): Promise<void> {
+  const response = await fetch(`${SUPPLIER_BASE}/${id}`, {
+    method: 'DELETE',
+    headers: bearerHeaders(token),
+  });
+  await handleResponse(response);
+}
+
+export interface AuditLogEntry {
+  id: number;
+  itemId: number;
+  itemName: string;
+  action: 'CREATE' | 'UPDATE' | 'ADJUST' | 'DELETE';
+  details: string | null;
+  oldValue: number | null;
+  newValue: number | null;
+  changedBy: string;
+  timestamp: string;
+}
+
+export async function fetchItemHistory(
+  id: number,
+  page = 0,
+  size = 20,
+): Promise<PagedResponse<AuditLogEntry>> {
+  const response = await fetch(`${API_BASE}/${id}/history?page=${page}&size=${size}`);
+  return handleResponse<PagedResponse<AuditLogEntry>>(response);
 }

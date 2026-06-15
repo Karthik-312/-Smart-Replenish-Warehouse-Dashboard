@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Boxes, Download, Layers, LogIn, LogOut, Moon, Sun, Zap } from 'lucide-react';
+import { Boxes, Download, Layers, LogIn, LogOut, Moon, ScanBarcode, Sun, Zap } from 'lucide-react';
 import {
   adjustStock,
   bulkAdjustStock,
   createItem,
   deleteItem,
   fetchInventory,
+  fetchInventoryPaged,
   fetchSummary,
   logout,
   updateItem,
@@ -14,17 +15,22 @@ import {
   type InventorySummary,
 } from './api/inventory';
 import AddItemForm from './components/AddItemForm';
+import AuditLogPanel from './components/AuditLogPanel';
+import BarcodeScanner from './components/BarcodeScanner';
 import BulkUpdateModal from './components/BulkUpdateModal';
+import DashboardCharts from './components/DashboardCharts';
 import ConfirmDialog from './components/ConfirmDialog';
 import EditItemModal from './components/EditItemModal';
 import InventoryFilters, { type InventoryFilterState } from './components/InventoryFilters';
 import InventoryTable from './components/InventoryTable';
 import LoginModal from './components/LoginModal';
 import LowStockBanner from './components/LowStockBanner';
+import Pagination from './components/Pagination';
 import StatusOverview, { RefreshButton } from './components/StatusOverview';
+import SupplierManagement from './components/SupplierManagement';
 import { ToastProvider, useToast } from './components/Toast';
 import { exportToCsv } from './utils/exportCsv';
-import { filterInventory, uniqueCategories } from './utils/filterInventory';
+import { uniqueCategories } from './utils/filterInventory';
 
 const emptySummary: InventorySummary = {
   totalItems: 0,
@@ -41,6 +47,7 @@ const defaultFilters: InventoryFilterState = {
 function AppContent() {
   const { toast } = useToast();
   const [items, setItems] = useState<InventoryItem[]>([]);
+  const [allItems, setAllItems] = useState<InventoryItem[]>([]);
   const [summary, setSummary] = useState<InventorySummary>(emptySummary);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -54,12 +61,24 @@ function AppContent() {
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
 
+  // Pagination state
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  const pageSize = 10;
+
   // Selection state
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [showBulkUpdate, setShowBulkUpdate] = useState(false);
 
   // Edit state
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
+
+  // History state
+  const [historyItem, setHistoryItem] = useState<InventoryItem | null>(null);
+
+  // Scanner state
+  const [showScanner, setShowScanner] = useState(false);
 
   // Confirm dialog state
   const [confirmState, setConfirmState] = useState<{
@@ -77,29 +96,41 @@ function AppContent() {
   }, [dark]);
 
   const isLoggedIn = user !== null;
+  const canEdit = isLoggedIn && (user.role === 'ADMIN' || user.role === 'MANAGER');
+  const canDelete = isLoggedIn && user.role === 'ADMIN';
 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [inventory, overview] = await Promise.all([fetchInventory(), fetchSummary()]);
-      setItems(inventory);
+      const [pagedResult, overview, all] = await Promise.all([
+        fetchInventoryPaged(page, pageSize, filters.search, filters.category, filters.status),
+        fetchSummary(),
+        fetchInventory(),
+      ]);
+      setItems(pagedResult.content);
+      setTotalPages(pagedResult.totalPages);
+      setTotalElements(pagedResult.totalElements);
       setSummary(overview);
+      setAllItems(all);
     } catch (err) {
       toast(err instanceof Error ? err.message : 'Failed to load inventory', 'error');
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [toast, page, filters]);
 
   useEffect(() => {
     void loadData();
   }, [loadData]);
 
-  const categories = useMemo(() => uniqueCategories(items), [items]);
-  const filteredItems = useMemo(() => filterInventory(items, filters), [items, filters]);
+  useEffect(() => {
+    setPage(0);
+  }, [filters]);
+
+  const categories = useMemo(() => uniqueCategories(allItems), [allItems]);
   const alertItems = useMemo(
-    () => items.filter((item) => item.status === 'LOW' || item.status === 'OUT_OF_STOCK'),
-    [items],
+    () => allItems.filter((item) => item.status === 'LOW' || item.status === 'OUT_OF_STOCK'),
+    [allItems],
   );
 
   const handleAdjust = async (id: number, delta: number) => {
@@ -244,6 +275,9 @@ function AppContent() {
                   <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">
                     {user.name || user.email}
                   </span>
+                  <span className="rounded-md bg-indigo-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300">
+                    {user.role}
+                  </span>
                 </div>
                 <button
                   type="button"
@@ -266,6 +300,14 @@ function AppContent() {
             )}
             <button
               type="button"
+              onClick={() => setShowScanner(true)}
+              className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white p-2 text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+              title="Scan barcode/QR code"
+            >
+              <ScanBarcode className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
               onClick={() => setDark((d) => !d)}
               className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white p-2 text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
               title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
@@ -282,7 +324,11 @@ function AppContent() {
 
         <StatusOverview summary={summary} loading={loading} />
 
-        {isLoggedIn && (
+        {!loading && allItems.length > 0 && (
+          <DashboardCharts items={allItems} summary={summary} />
+        )}
+
+        {canEdit && (
           <AddItemForm categories={categories} onSubmit={handleCreate} submitting={creating} />
         )}
 
@@ -290,8 +336,8 @@ function AppContent() {
           filters={filters}
           categories={categories}
           onChange={setFilters}
-          resultCount={filteredItems.length}
-          totalCount={items.length}
+          resultCount={totalElements}
+          totalCount={allItems.length}
         />
 
         <section>
@@ -301,7 +347,7 @@ function AppContent() {
               <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Inventory List</h2>
             </div>
             <div className="flex items-center gap-2">
-              {isLoggedIn && selectedIds.size > 0 && (
+              {canEdit && selectedIds.size > 0 && (
                 <button
                   type="button"
                   onClick={() => setShowBulkUpdate(true)}
@@ -311,10 +357,10 @@ function AppContent() {
                   Bulk Update ({selectedIds.size})
                 </button>
               )}
-              {filteredItems.length > 0 && (
+              {items.length > 0 && (
                 <button
                   type="button"
-                  onClick={() => exportToCsv(filteredItems)}
+                  onClick={() => exportToCsv(allItems)}
                   className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                 >
                   <Download className="h-4 w-4" />
@@ -328,21 +374,34 @@ function AppContent() {
               Loading inventory...
             </div>
           ) : (
-            <InventoryTable
-              items={filteredItems}
-              onAdjust={handleAdjust}
-              onEdit={(item) => setEditingItem(item)}
-              onDelete={handleDeleteRequest}
-              adjustingId={adjustingId}
-              readonly={!isLoggedIn}
-              selectedIds={selectedIds}
-              onSelectionChange={setSelectedIds}
-              hasFilters={
-                filters.search !== '' || filters.category !== 'ALL' || filters.status !== 'ALL'
-              }
-            />
+            <>
+              <InventoryTable
+                items={items}
+                onAdjust={handleAdjust}
+                onEdit={(item) => setEditingItem(item)}
+                onDelete={handleDeleteRequest}
+                onHistory={(item) => setHistoryItem(item)}
+                adjustingId={adjustingId}
+                readonly={!canEdit}
+                canDelete={canDelete}
+                selectedIds={selectedIds}
+                onSelectionChange={setSelectedIds}
+                hasFilters={
+                  filters.search !== '' || filters.category !== 'ALL' || filters.status !== 'ALL'
+                }
+              />
+              <Pagination
+                currentPage={page}
+                totalPages={totalPages}
+                onPageChange={setPage}
+              />
+            </>
           )}
         </section>
+
+        {isLoggedIn && (
+          <SupplierManagement token={user.token} canEdit={canEdit} canDelete={canDelete} />
+        )}
       </main>
 
       {showLogin && (
@@ -363,6 +422,22 @@ function AppContent() {
           selectedCount={selectedIds.size}
           onApply={handleBulkUpdate}
           onClose={() => setShowBulkUpdate(false)}
+        />
+      )}
+
+      {historyItem && (
+        <AuditLogPanel item={historyItem} onClose={() => setHistoryItem(null)} />
+      )}
+
+      {showScanner && (
+        <BarcodeScanner
+          items={allItems}
+          onFound={(item) => {
+            setShowScanner(false);
+            setEditingItem(item);
+            toast(`Found: ${item.name} (${item.sku})`, 'success');
+          }}
+          onClose={() => setShowScanner(false)}
         />
       )}
 
