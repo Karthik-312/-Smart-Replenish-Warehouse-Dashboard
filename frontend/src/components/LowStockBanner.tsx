@@ -18,21 +18,21 @@ export default function LowStockBanner({ items }: LowStockBannerProps) {
       {outOfStock.length > 0 && (
         <div
           role="alert"
-          className="rounded-2xl border border-rose-200 bg-gradient-to-r from-rose-50 to-red-50 px-5 py-4 shadow-sm"
+          className="rounded-2xl border border-rose-200 bg-gradient-to-r from-rose-50 to-red-50 px-5 py-4 shadow-sm dark:border-rose-800 dark:from-rose-900/30 dark:to-red-900/30"
         >
           <div className="flex items-start gap-3">
-            <div className="rounded-lg bg-rose-100 p-2">
-              <PackageX className="h-5 w-5 text-rose-600" />
+            <div className="rounded-lg bg-rose-100 p-2 dark:bg-rose-900/50">
+              <PackageX className="h-5 w-5 text-rose-600 dark:text-rose-400" />
             </div>
             <div className="min-w-0 flex-1">
-              <h3 className="font-semibold text-rose-900">
+              <h3 className="font-semibold text-rose-900 dark:text-rose-200">
                 {outOfStock.length} item{outOfStock.length === 1 ? '' : 's'} out of stock — reorder now
               </h3>
               <ul className="mt-2 flex flex-wrap gap-2">
                 {outOfStock.map((item) => (
                   <li
                     key={item.id}
-                    className="inline-flex items-center gap-1 rounded-full bg-white/80 px-3 py-1 text-xs font-medium text-rose-800 ring-1 ring-rose-200"
+                    className="inline-flex items-center gap-1 rounded-full bg-white/80 px-3 py-1 text-xs font-medium text-rose-800 ring-1 ring-rose-200 dark:bg-slate-800/80 dark:text-rose-300 dark:ring-rose-700"
                   >
                     <span className="font-mono">{item.sku}</span>
                     <span className="text-rose-400">·</span>
@@ -48,29 +48,29 @@ export default function LowStockBanner({ items }: LowStockBannerProps) {
       {lowStock.length > 0 && (
         <div
           role="alert"
-          className="rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 px-5 py-4 shadow-sm"
+          className="rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 px-5 py-4 shadow-sm dark:border-amber-800 dark:from-amber-900/30 dark:to-orange-900/30"
         >
           <div className="flex items-start gap-3">
-            <div className="rounded-lg bg-amber-100 p-2">
-              <AlertTriangle className="h-5 w-5 animate-pulse-warning text-amber-600" />
+            <div className="rounded-lg bg-amber-100 p-2 dark:bg-amber-900/50">
+              <AlertTriangle className="h-5 w-5 animate-pulse-warning text-amber-600 dark:text-amber-400" />
             </div>
             <div className="min-w-0 flex-1">
-              <h3 className="font-semibold text-amber-900">
+              <h3 className="font-semibold text-amber-900 dark:text-amber-200">
                 {lowStock.length} item{lowStock.length === 1 ? '' : 's'} below minimum threshold
               </h3>
-              <p className="mt-1 text-sm text-amber-800">
+              <p className="mt-1 text-sm text-amber-800 dark:text-amber-300">
                 These products need replenishment before they run out.
               </p>
               <ul className="mt-2 flex flex-wrap gap-2">
                 {lowStock.map((item) => (
                   <li
                     key={item.id}
-                    className="inline-flex items-center gap-1 rounded-full bg-white/80 px-3 py-1 text-xs font-medium text-amber-900 ring-1 ring-amber-200"
+                    className="inline-flex items-center gap-1 rounded-full bg-white/80 px-3 py-1 text-xs font-medium text-amber-900 ring-1 ring-amber-200 dark:bg-slate-800/80 dark:text-amber-300 dark:ring-amber-700"
                   >
                     <span className="font-mono">{item.sku}</span>
                     <span className="text-amber-400">·</span>
                     {item.name}
-                    <span className="text-amber-600">({item.currentStock}/{item.minThreshold})</span>
+                    <span className="text-amber-600 dark:text-amber-400">({item.currentStock}/{item.minThreshold})</span>
                   </li>
                 ))}
               </ul>
