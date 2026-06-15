@@ -1,4 +1,4 @@
-import { AlertTriangle, Lock, Minus, Pencil, Plus, Trash2 } from 'lucide-react';
+import { AlertTriangle, Clock, Lock, Minus, Pencil, Plus, Trash2 } from 'lucide-react';
 import type { InventoryItem, StockStatus } from '../api/inventory';
 
 interface InventoryTableProps {
@@ -6,9 +6,11 @@ interface InventoryTableProps {
   onAdjust: (id: number, delta: number) => Promise<void>;
   onEdit: (item: InventoryItem) => void;
   onDelete: (item: InventoryItem) => void;
+  onHistory: (item: InventoryItem) => void;
   adjustingId: number | null;
   hasFilters?: boolean;
   readonly?: boolean;
+  canDelete?: boolean;
   selectedIds: Set<number>;
   onSelectionChange: (ids: Set<number>) => void;
 }
@@ -39,9 +41,11 @@ export default function InventoryTable({
   onAdjust,
   onEdit,
   onDelete,
+  onHistory,
   adjustingId,
   hasFilters = false,
   readonly = false,
+  canDelete = false,
   selectedIds,
   onSelectionChange,
 }: InventoryTableProps) {
@@ -190,13 +194,22 @@ export default function InventoryTable({
                       </button>
                       <button
                         type="button"
-                        disabled={readonly}
-                        onClick={() => onDelete(item)}
-                        title={readonly ? 'Login to enable' : 'Delete item'}
-                        className="inline-flex items-center rounded-lg border border-slate-200 bg-white p-1.5 text-slate-700 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:hover:border-rose-700 dark:hover:bg-rose-900/30 dark:hover:text-rose-300"
+                        onClick={() => onHistory(item)}
+                        title="View history"
+                        className="inline-flex items-center rounded-lg border border-slate-200 bg-white p-1.5 text-slate-700 transition hover:border-violet-200 hover:bg-violet-50 hover:text-violet-700 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:hover:border-violet-700 dark:hover:bg-violet-900/30 dark:hover:text-violet-300"
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        <Clock className="h-3.5 w-3.5" />
                       </button>
+                      {canDelete && (
+                        <button
+                          type="button"
+                          onClick={() => onDelete(item)}
+                          title="Delete item"
+                          className="inline-flex items-center rounded-lg border border-slate-200 bg-white p-1.5 text-slate-700 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:hover:border-rose-700 dark:hover:bg-rose-900/30 dark:hover:text-rose-300"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      )}
                       {readonly && (
                         <span title="Login required">
                           <Lock className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />

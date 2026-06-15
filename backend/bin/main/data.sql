@@ -7,3 +7,12 @@ INSERT INTO inventory_items (name, sku, category, current_stock, min_threshold, 
 ('Mechanical Keyboard', 'MK-006', 'Electronics', 22, 10, 'HEALTHY'),
 ('Sticky Notes Pack', 'SN-007', 'Office Supplies', 3, 10, 'LOW'),
 ('Monitor Stand', 'MS-008', 'Electronics', 18, 5, 'HEALTHY');
+
+INSERT INTO user_roles (email, role) VALUES
+('daggupatikarthikeya@gmail.com', 'ADMIN'),
+('karthikeyadaggupati11@gmail.com', 'ADMIN');
+
+INSERT INTO suppliers (name, contact_email, phone, address, notes) VALUES
+('TechWorld Distributors', 'sales@techworld.com', '+1-555-0101', '123 Tech Blvd, San Jose, CA', 'Primary electronics supplier'),
+('Office Essentials Co.', 'orders@officeessentials.com', '+1-555-0202', '456 Paper St, Portland, OR', 'Office supplies and paper goods'),
+('FurniPro Wholesale', 'contact@furnipro.com', '+1-555-0303', '789 Oak Ave, Chicago, IL', 'Furniture and ergonomic equipment');

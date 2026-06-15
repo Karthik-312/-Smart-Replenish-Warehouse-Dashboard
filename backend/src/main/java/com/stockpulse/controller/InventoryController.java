@@ -2,7 +2,10 @@ package com.stockpulse.controller;
 
 import com.stockpulse.dto.InventorySummary;
 import com.stockpulse.model.InventoryItem;
+import com.stockpulse.model.StockAuditLog;
+import com.stockpulse.service.AuditService;
 import com.stockpulse.service.InventoryService;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -23,14 +26,26 @@ import java.util.Map;
 public class InventoryController {
 
     private final InventoryService inventoryService;
+    private final AuditService auditService;
 
-    public InventoryController(InventoryService inventoryService) {
+    public InventoryController(InventoryService inventoryService, AuditService auditService) {
         this.inventoryService = inventoryService;
+        this.auditService = auditService;
     }
 
     @GetMapping
     public List<InventoryItem> getAllItems() {
         return inventoryService.findAll();
+    }
+
+    @GetMapping("/paged")
+    public Page<InventoryItem> getPagedItems(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String status) {
+        return inventoryService.findPaginated(page, size, search, category, status);
     }
 
     @GetMapping("/summary")
@@ -63,5 +78,13 @@ public class InventoryController {
     public ResponseEntity<Map<String, String>> deleteItem(@PathVariable Long id) {
         inventoryService.delete(id);
         return ResponseEntity.ok(Map.of("message", "Item deleted successfully"));
+    }
+
+    @GetMapping("/{id}/history")
+    public Page<StockAuditLog> getItemHistory(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return auditService.getHistoryForItem(id, page, size);
     }
 }
