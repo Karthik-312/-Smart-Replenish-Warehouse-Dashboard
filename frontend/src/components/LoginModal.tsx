@@ -32,34 +32,34 @@ export default function LoginModal({ onLogin, onClose }: LoginModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="relative w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
+      <div className="relative w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-slate-800">
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-4 top-4 text-slate-400 hover:text-slate-600"
+          className="absolute right-4 top-4 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
         >
           <X className="h-5 w-5" />
         </button>
 
         <div className="mb-6 text-center">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 shadow-lg shadow-indigo-200">
+          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 shadow-lg shadow-indigo-200 dark:shadow-indigo-900/40">
             <Shield className="h-6 w-6 text-white" />
           </div>
-          <h2 className="text-lg font-bold text-slate-900">Admin Access</h2>
-          <p className="mt-1 text-sm text-slate-500">
+          <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">Admin Access</h2>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             Sign in with an authorized Google account
           </p>
         </div>
 
         <div className="space-y-4">
           {error && (
-            <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+            <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:border-rose-800 dark:bg-rose-900/30 dark:text-rose-300">
               {error}
             </div>
           )}
 
           {loading ? (
-            <div className="py-4 text-center text-sm text-slate-500">Verifying...</div>
+            <div className="py-4 text-center text-sm text-slate-500 dark:text-slate-400">Verifying...</div>
           ) : (
             <div className="flex justify-center">
               <GoogleLogin
@@ -73,7 +73,7 @@ export default function LoginModal({ onLogin, onClose }: LoginModalProps) {
             </div>
           )}
 
-          <p className="text-center text-xs text-slate-400">
+          <p className="text-center text-xs text-slate-400 dark:text-slate-500">
             Only authorized email addresses can edit inventory
           </p>
         </div>
