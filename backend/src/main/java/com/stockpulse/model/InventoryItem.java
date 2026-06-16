@@ -36,6 +36,9 @@ public class InventoryItem {
     @Column(nullable = false)
     private StockStatus status;
 
+    @Column(name = "supplier_id")
+    private Long supplierId;
+
     public InventoryItem() {
     }
 
@@ -102,5 +105,13 @@ public class InventoryItem {
 
     public void setStatus(StockStatus status) {
         this.status = status;
+    }
+
+    public Long getSupplierId() {
+        return supplierId;
+    }
+
+    public void setSupplierId(Long supplierId) {
+        this.supplierId = supplierId;
     }
 }
