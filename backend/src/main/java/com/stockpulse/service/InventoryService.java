@@ -81,6 +81,8 @@ public class InventoryService {
         existing.setCategory(updated.getCategory());
         existing.setCurrentStock(updated.getCurrentStock());
         existing.setMinThreshold(updated.getMinThreshold());
+        existing.setPrice(updated.getPrice());
+        existing.setSupplierId(updated.getSupplierId());
         updateStatus(existing);
         InventoryItem saved = repository.save(existing);
         auditService.log(saved.getId(), saved.getName(), AuditAction.UPDATE,
