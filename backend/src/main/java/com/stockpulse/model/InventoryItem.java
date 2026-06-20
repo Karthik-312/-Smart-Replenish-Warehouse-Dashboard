@@ -36,6 +36,9 @@ public class InventoryItem {
     @Column(nullable = false)
     private StockStatus status;
 
+    @Column(name = "price")
+    private Double price;
+
     @Column(name = "supplier_id")
     private Long supplierId;
 
@@ -105,6 +108,14 @@ public class InventoryItem {
 
     public void setStatus(StockStatus status) {
         this.status = status;
+    }
+
+    public Double getPrice() {
+        return price;
+    }
+
+    public void setPrice(Double price) {
+        this.price = price;
     }
 
     public Long getSupplierId() {

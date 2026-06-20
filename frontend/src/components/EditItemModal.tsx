@@ -5,7 +5,7 @@ import type { InventoryItem } from '../api/inventory';
 interface EditItemModalProps {
   item: InventoryItem;
   categories: string[];
-  onSave: (id: number, data: { name: string; sku: string; category: string; minThreshold: number }) => Promise<void>;
+  onSave: (id: number, data: { name: string; sku: string; category: string; minThreshold: number; price?: number }) => Promise<void>;
   onClose: () => void;
 }
 
@@ -14,13 +14,14 @@ export default function EditItemModal({ item, categories, onSave, onClose }: Edi
   const [sku, setSku] = useState(item.sku);
   const [category, setCategory] = useState(item.category);
   const [minThreshold, setMinThreshold] = useState(item.minThreshold);
+  const [price, setPrice] = useState(item.price ?? 0);
   const [saving, setSaving] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     try {
-      await onSave(item.id, { name, sku, category, minThreshold });
+      await onSave(item.id, { name, sku, category, minThreshold, price });
       onClose();
     } finally {
       setSaving(false);
@@ -106,6 +107,20 @@ export default function EditItemModal({ item, categories, onSave, onClose }: Edi
               onChange={(e) => setMinThreshold(Number(e.target.value))}
               min={0}
               required
+              className={inputClass}
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Price (₹)
+            </label>
+            <input
+              type="number"
+              value={price}
+              onChange={(e) => setPrice(Number(e.target.value))}
+              min={0}
+              step={0.01}
               className={inputClass}
             />
           </div>

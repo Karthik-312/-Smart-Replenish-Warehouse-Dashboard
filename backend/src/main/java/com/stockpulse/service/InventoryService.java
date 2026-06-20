@@ -24,12 +24,17 @@ public class InventoryService {
     private final InventoryItemRepository repository;
     private final AuditService auditService;
     private final EmailNotificationService emailService;
+    private final StockUpdateBroadcaster broadcaster;
+    private final ReorderService reorderService;
 
     public InventoryService(InventoryItemRepository repository, AuditService auditService,
-                            EmailNotificationService emailService) {
+                            EmailNotificationService emailService, StockUpdateBroadcaster broadcaster,
+                            ReorderService reorderService) {
         this.repository = repository;
         this.auditService = auditService;
         this.emailService = emailService;
+        this.broadcaster = broadcaster;
+        this.reorderService = reorderService;
     }
 
     public List<InventoryItem> findAll() {
@@ -63,6 +68,7 @@ public class InventoryService {
         InventoryItem saved = repository.save(item);
         auditService.log(saved.getId(), saved.getName(), AuditAction.CREATE,
                 "Created with stock " + saved.getCurrentStock(), null, saved.getCurrentStock());
+        broadcaster.broadcastUpdate("CREATE", saved);
         return saved;
     }
 
@@ -79,6 +85,7 @@ public class InventoryService {
         InventoryItem saved = repository.save(existing);
         auditService.log(saved.getId(), saved.getName(), AuditAction.UPDATE,
                 "Item details updated", oldStock, saved.getCurrentStock());
+        broadcaster.broadcastUpdate("UPDATE", saved);
         return saved;
     }
 
@@ -95,6 +102,7 @@ public class InventoryService {
         InventoryItem saved = repository.save(item);
         auditService.log(saved.getId(), saved.getName(), AuditAction.ADJUST,
                 "Stock adjusted by " + (delta > 0 ? "+" : "") + delta, oldStock, newStock);
+        broadcaster.broadcastUpdate("ADJUST", saved);
         return saved;
     }
 
@@ -104,6 +112,7 @@ public class InventoryService {
         auditService.log(item.getId(), item.getName(), AuditAction.DELETE,
                 "Item deleted", item.getCurrentStock(), null);
         repository.deleteById(id);
+        broadcaster.broadcastDelete(id, item.getName());
     }
 
     public InventorySummary getSummary() {
@@ -122,6 +131,7 @@ public class InventoryService {
             if (previousStatus != newStatus || previousStatus == null) {
                 logReorderAlert(item.getSku(), newStatus);
                 emailService.sendLowStockAlert(item, newStatus);
+                reorderService.generateOrderIfNeeded(item);
             }
         }
     }
