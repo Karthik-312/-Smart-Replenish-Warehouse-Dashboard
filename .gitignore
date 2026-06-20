@@ -1,6 +1,7 @@
 # Backend
 backend/build/
 backend/.gradle/
+backend/data/
 
 # Frontend
 frontend/node_modules/
