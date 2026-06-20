@@ -2,11 +2,15 @@ package com.stockpulse.config;
 
 import com.stockpulse.model.*;
 import com.stockpulse.repository.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
 @Component
 public class DataSeeder implements CommandLineRunner {
+
+    private static final Logger log = LoggerFactory.getLogger(DataSeeder.class);
 
     private final InventoryItemRepository itemRepo;
     private final UserRoleRepository roleRepo;
@@ -28,10 +32,13 @@ public class DataSeeder implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        if (itemRepo.count() > 0) {
+        long count = itemRepo.count();
+        if (count > 0) {
+            log.info("Database already has {} items — skipping seed.", count);
             return;
         }
 
+        log.info("Empty database detected — seeding default data...");
         seedItems();
         seedRoles();
         seedSuppliers();
