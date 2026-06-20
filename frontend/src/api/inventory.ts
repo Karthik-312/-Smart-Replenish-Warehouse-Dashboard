@@ -15,6 +15,7 @@ export interface InventoryItem {
   currentStock: number;
   minThreshold: number;
   status: StockStatus;
+  price?: number;
 }
 
 export interface InventorySummary {
@@ -116,7 +117,7 @@ export async function createItem(item: Omit<InventoryItem, 'id' | 'status'>, tok
 
 export async function updateItem(
   id: number,
-  data: Partial<Pick<InventoryItem, 'name' | 'sku' | 'category' | 'minThreshold'>>,
+  data: Partial<Pick<InventoryItem, 'name' | 'sku' | 'category' | 'minThreshold' | 'price'>>,
   token: string,
 ): Promise<InventoryItem> {
   const response = await fetch(`${API_BASE}/${id}`, {
@@ -210,4 +211,120 @@ export async function fetchItemHistory(
 ): Promise<PagedResponse<AuditLogEntry>> {
   const response = await fetch(`${API_BASE}/${id}/history?page=${page}&size=${size}`);
   return handleResponse<PagedResponse<AuditLogEntry>>(response);
+}
+
+// --- Warehouses ---
+
+const WAREHOUSE_BASE =
+  import.meta.env.VITE_API_BASE_URL
+    ? import.meta.env.VITE_API_BASE_URL.replace('/inventory', '/warehouses')
+    : 'http://localhost:8080/api/warehouses';
+
+export interface Warehouse {
+  id: number;
+  name: string;
+  location: string;
+  default: boolean;
+}
+
+export interface WarehouseStock {
+  id: number;
+  warehouseId: number;
+  itemId: number;
+  quantity: number;
+}
+
+export async function fetchWarehouses(): Promise<Warehouse[]> {
+  const response = await fetch(WAREHOUSE_BASE);
+  return handleResponse<Warehouse[]>(response);
+}
+
+export async function createWarehouse(w: Omit<Warehouse, 'id'>, token: string): Promise<Warehouse> {
+  const response = await fetch(WAREHOUSE_BASE, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...bearerHeaders(token) },
+    body: JSON.stringify(w),
+  });
+  return handleResponse<Warehouse>(response);
+}
+
+export async function updateWarehouse(id: number, w: Omit<Warehouse, 'id'>, token: string): Promise<Warehouse> {
+  const response = await fetch(`${WAREHOUSE_BASE}/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...bearerHeaders(token) },
+    body: JSON.stringify(w),
+  });
+  return handleResponse<Warehouse>(response);
+}
+
+export async function deleteWarehouse(id: number, token: string): Promise<void> {
+  const response = await fetch(`${WAREHOUSE_BASE}/${id}`, {
+    method: 'DELETE',
+    headers: bearerHeaders(token),
+  });
+  await handleResponse(response);
+}
+
+export async function fetchWarehouseStock(warehouseId: number): Promise<WarehouseStock[]> {
+  const response = await fetch(`${WAREHOUSE_BASE}/${warehouseId}/stock`);
+  return handleResponse<WarehouseStock[]>(response);
+}
+
+export async function fetchItemWarehouseBreakdown(itemId: number): Promise<WarehouseStock[]> {
+  const response = await fetch(`${WAREHOUSE_BASE}/item/${itemId}/breakdown`);
+  return handleResponse<WarehouseStock[]>(response);
+}
+
+// --- Purchase Orders ---
+
+const PO_BASE =
+  import.meta.env.VITE_API_BASE_URL
+    ? import.meta.env.VITE_API_BASE_URL.replace('/inventory', '/purchase-orders')
+    : 'http://localhost:8080/api/purchase-orders';
+
+export type PurchaseOrderStatus = 'PENDING' | 'APPROVED' | 'ORDERED' | 'RECEIVED' | 'CANCELLED';
+
+export interface PurchaseOrder {
+  id: number;
+  itemId: number;
+  itemName: string;
+  sku: string;
+  supplierId: number | null;
+  quantity: number;
+  status: PurchaseOrderStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function fetchPurchaseOrders(status?: PurchaseOrderStatus): Promise<PurchaseOrder[]> {
+  const params = status ? `?status=${status}` : '';
+  const response = await fetch(`${PO_BASE}${params}`);
+  return handleResponse<PurchaseOrder[]>(response);
+}
+
+export async function updatePurchaseOrderStatus(
+  id: number,
+  status: PurchaseOrderStatus,
+  token: string,
+): Promise<PurchaseOrder> {
+  const response = await fetch(`${PO_BASE}/${id}/status`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...bearerHeaders(token) },
+    body: JSON.stringify({ status }),
+  });
+  return handleResponse<PurchaseOrder>(response);
+}
+
+// --- Demand Forecast ---
+
+export interface DemandForecast {
+  avgDailyConsumption: number;
+  daysUntilStockout: number;
+  suggestedReorderQty: number;
+  dataPoints: number;
+}
+
+export async function fetchForecast(itemId: number, days = 30): Promise<DemandForecast> {
+  const response = await fetch(`${API_BASE}/${itemId}/forecast?days=${days}`);
+  return handleResponse<DemandForecast>(response);
 }

@@ -21,14 +21,18 @@ import BulkUpdateModal from './components/BulkUpdateModal';
 import DashboardCharts from './components/DashboardCharts';
 import ConfirmDialog from './components/ConfirmDialog';
 import EditItemModal from './components/EditItemModal';
+import ForecastPanel from './components/ForecastPanel';
 import InventoryFilters, { type InventoryFilterState } from './components/InventoryFilters';
 import InventoryTable from './components/InventoryTable';
 import LoginModal from './components/LoginModal';
+import PurchaseOrders from './components/PurchaseOrders';
 import LowStockBanner from './components/LowStockBanner';
 import Pagination from './components/Pagination';
 import StatusOverview, { RefreshButton } from './components/StatusOverview';
 import SupplierManagement from './components/SupplierManagement';
+import WarehouseManagement from './components/WarehouseManagement';
 import { ToastProvider, useToast } from './components/Toast';
+import { useWebSocket } from './hooks/useWebSocket';
 import { exportToCsv } from './utils/exportCsv';
 import { uniqueCategories } from './utils/filterInventory';
 
@@ -77,6 +81,9 @@ function AppContent() {
   // History state
   const [historyItem, setHistoryItem] = useState<InventoryItem | null>(null);
 
+  // Forecast state
+  const [forecastItem, setForecastItem] = useState<InventoryItem | null>(null);
+
   // Scanner state
   const [showScanner, setShowScanner] = useState(false);
 
@@ -118,6 +125,8 @@ function AppContent() {
       setLoading(false);
     }
   }, [toast, page, filters]);
+
+  const { connected: wsConnected } = useWebSocket(loadData);
 
   useEffect(() => {
     void loadData();
@@ -314,6 +323,12 @@ function AppContent() {
             >
               {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </button>
+            {wsConnected && (
+              <span className="flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:ring-emerald-700">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
+                Live
+              </span>
+            )}
             <RefreshButton onClick={() => void loadData()} loading={loading} />
           </div>
         </div>
@@ -381,6 +396,7 @@ function AppContent() {
                 onEdit={(item) => setEditingItem(item)}
                 onDelete={handleDeleteRequest}
                 onHistory={(item) => setHistoryItem(item)}
+                onForecast={(item) => setForecastItem(item)}
                 adjustingId={adjustingId}
                 readonly={!canEdit}
                 canDelete={canDelete}
@@ -398,6 +414,14 @@ function AppContent() {
             </>
           )}
         </section>
+
+        {isLoggedIn && (
+          <PurchaseOrders token={user.token} canEdit={canEdit} />
+        )}
+
+        {isLoggedIn && (
+          <WarehouseManagement token={user.token} canEdit={canEdit} canDelete={canDelete} />
+        )}
 
         {isLoggedIn && (
           <SupplierManagement token={user.token} canEdit={canEdit} canDelete={canDelete} />
@@ -429,6 +453,10 @@ function AppContent() {
         <AuditLogPanel item={historyItem} onClose={() => setHistoryItem(null)} />
       )}
 
+      {forecastItem && (
+        <ForecastPanel item={forecastItem} onClose={() => setForecastItem(null)} />
+      )}
+
       {showScanner && (
         <BarcodeScanner
           items={allItems}
@@ -437,6 +465,17 @@ function AppContent() {
             setEditingItem(item);
             toast(`Found: ${item.name} (${item.sku})`, 'success');
           }}
+          onAddNew={canEdit ? (prefilled) => {
+            setShowScanner(false);
+            void (async () => {
+              try {
+                await handleCreate(prefilled);
+                toast(`Added "${prefilled.name}" to inventory!`, 'success');
+              } catch (err) {
+                toast(err instanceof Error ? err.message : 'Failed to add item', 'error');
+              }
+            })();
+          } : undefined}
           onClose={() => setShowScanner(false)}
         />
       )}
