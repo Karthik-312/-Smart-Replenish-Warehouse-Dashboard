@@ -99,7 +99,7 @@ export default function InventoryTable({
                   />
                 </th>
               )}
-              {['Product', 'SKU', 'Category', 'Price', 'Stock', 'Min Threshold', 'Status', 'Actions'].map(
+              {['Product', 'SKU', 'Category', 'Price', 'Final Price', 'Stock', 'Min Threshold', 'Status', 'Actions'].map(
                 (header) => (
                   <th
                     key={header}
@@ -152,8 +152,26 @@ export default function InventoryTable({
                   <td className="whitespace-nowrap px-4 py-4 text-sm text-slate-600 dark:text-slate-400">
                     {item.category}
                   </td>
-                  <td className="whitespace-nowrap px-4 py-4 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                    {item.price != null ? `₹${item.price.toFixed(2)}` : '—'}
+                  <td className="whitespace-nowrap px-4 py-4 text-sm text-slate-900 dark:text-slate-100">
+                    {item.price != null ? (
+                      item.discountPercentage && item.discountPercentage > 0 ? (
+                        <span className="flex items-center gap-1.5">
+                          <span className="line-through text-slate-400 dark:text-slate-500 font-medium">₹{item.price.toFixed(2)}</span>
+                          <span className="inline-flex items-center rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+                            {item.discountPercentage}% OFF
+                          </span>
+                        </span>
+                      ) : (
+                        <span className="font-semibold">₹{item.price.toFixed(2)}</span>
+                      )
+                    ) : '—'}
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-4 text-sm font-bold text-slate-900 dark:text-slate-100">
+                    {item.finalPrice != null ? (
+                      <span className={item.discountPercentage && item.discountPercentage > 0 ? 'text-emerald-600 dark:text-emerald-400' : ''}>
+                        ₹{item.finalPrice.toFixed(2)}
+                      </span>
+                    ) : '—'}
                   </td>
                   <td className="whitespace-nowrap px-4 py-4 text-sm font-semibold text-slate-900 dark:text-slate-100">
                     {item.currentStock}
