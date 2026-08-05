@@ -125,4 +125,26 @@ public class InventoryItem {
     public void setSupplierId(Long supplierId) {
         this.supplierId = supplierId;
     }
+
+    /**
+     * Dynamic discount: items with HEALTHY status and stock well above threshold
+     * get a discount to move excess inventory. LOW/OUT_OF_STOCK keep full price.
+     */
+    public Double getDiscountPercentage() {
+        if (price == null || price <= 0 || status != StockStatus.HEALTHY) {
+            return 0.0;
+        }
+        double ratio = (double) currentStock / Math.max(minThreshold, 1);
+        if (ratio >= 4) return 20.0;
+        if (ratio >= 3) return 15.0;
+        if (ratio >= 2) return 10.0;
+        return 0.0;
+    }
+
+    public Double getFinalPrice() {
+        if (price == null) return null;
+        double discount = getDiscountPercentage();
+        if (discount <= 0) return price;
+        return Math.round(price * (1 - discount / 100.0) * 100.0) / 100.0;
+    }
 }

@@ -16,6 +16,8 @@ export interface InventoryItem {
   minThreshold: number;
   status: StockStatus;
   price?: number;
+  discountPercentage?: number;
+  finalPrice?: number;
 }
 
 export interface InventorySummary {
