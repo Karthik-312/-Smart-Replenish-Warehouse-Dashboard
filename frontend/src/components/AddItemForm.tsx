@@ -7,6 +7,7 @@ export interface NewItemInput {
   category: string;
   currentStock: number;
   minThreshold: number;
+  price?: number;
 }
 
 interface AddItemFormProps {
@@ -21,6 +22,7 @@ const emptyForm: NewItemInput = {
   category: '',
   currentStock: 0,
   minThreshold: 5,
+  price: 0,
 };
 
 export default function AddItemForm({ categories, onSubmit, submitting }: AddItemFormProps) {
@@ -48,6 +50,7 @@ export default function AddItemForm({ categories, onSubmit, submitting }: AddIte
         category: form.category.trim(),
         currentStock: form.currentStock,
         minThreshold: form.minThreshold,
+        price: form.price,
       });
       setForm(emptyForm);
       setOpen(false);
@@ -139,6 +142,19 @@ export default function AddItemForm({ categories, onSubmit, submitting }: AddIte
                 min={0}
                 value={form.minThreshold}
                 onChange={(e) => setForm({ ...form, minThreshold: Number(e.target.value) })}
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-slate-900 outline-none ring-indigo-500 focus:ring-2 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+              />
+            </label>
+
+            <label className="block text-sm">
+              <span className="mb-1 block font-medium text-slate-700 dark:text-slate-300">Price (₹)</span>
+              <input
+                type="number"
+                min={0}
+                step={0.01}
+                value={form.price}
+                onChange={(e) => setForm({ ...form, price: Number(e.target.value) })}
+                placeholder="499.00"
                 className="w-full rounded-lg border border-slate-200 px-3 py-2 text-slate-900 outline-none ring-indigo-500 focus:ring-2 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
               />
             </label>
