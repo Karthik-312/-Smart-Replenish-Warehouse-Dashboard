@@ -15,7 +15,7 @@ function escapeCsvField(value: string | number): string {
 }
 
 export function exportToCsv(items: InventoryItem[]): void {
-  const headers = ['Name', 'SKU', 'Category', 'Current Stock', 'Min Threshold', 'Status'];
+  const headers = ['Name', 'SKU', 'Category', 'Current Stock', 'Min Threshold', 'Status', 'Price'];
 
   const rows = items.map((item) => [
     escapeCsvField(item.name),
@@ -24,6 +24,7 @@ export function exportToCsv(items: InventoryItem[]): void {
     item.currentStock,
     item.minThreshold,
     STATUS_LABELS[item.status] ?? item.status,
+    item.price != null ? item.price : '',
   ]);
 
   const csv = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n');

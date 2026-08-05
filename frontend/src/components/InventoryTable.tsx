@@ -1,4 +1,4 @@
-import { AlertTriangle, Clock, Lock, Minus, Pencil, Plus, Trash2 } from 'lucide-react';
+import { AlertTriangle, BarChart3, Clock, Lock, Minus, Pencil, Plus, Trash2 } from 'lucide-react';
 import type { InventoryItem, StockStatus } from '../api/inventory';
 
 interface InventoryTableProps {
@@ -7,6 +7,7 @@ interface InventoryTableProps {
   onEdit: (item: InventoryItem) => void;
   onDelete: (item: InventoryItem) => void;
   onHistory: (item: InventoryItem) => void;
+  onForecast?: (item: InventoryItem) => void;
   adjustingId: number | null;
   hasFilters?: boolean;
   readonly?: boolean;
@@ -42,6 +43,7 @@ export default function InventoryTable({
   onEdit,
   onDelete,
   onHistory,
+  onForecast,
   adjustingId,
   hasFilters = false,
   readonly = false,
@@ -97,7 +99,7 @@ export default function InventoryTable({
                   />
                 </th>
               )}
-              {['Product', 'SKU', 'Category', 'Stock', 'Min Threshold', 'Status', 'Actions'].map(
+              {['Product', 'SKU', 'Category', 'Price', 'Stock', 'Min Threshold', 'Status', 'Actions'].map(
                 (header) => (
                   <th
                     key={header}
@@ -151,6 +153,9 @@ export default function InventoryTable({
                     {item.category}
                   </td>
                   <td className="whitespace-nowrap px-4 py-4 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    {item.price != null ? `₹${item.price.toFixed(2)}` : '—'}
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-4 text-sm font-semibold text-slate-900 dark:text-slate-100">
                     {item.currentStock}
                   </td>
                   <td className="whitespace-nowrap px-4 py-4 text-sm text-slate-600 dark:text-slate-400">
@@ -200,6 +205,16 @@ export default function InventoryTable({
                       >
                         <Clock className="h-3.5 w-3.5" />
                       </button>
+                      {onForecast && (
+                        <button
+                          type="button"
+                          onClick={() => onForecast(item)}
+                          title="Demand forecast"
+                          className="inline-flex items-center rounded-lg border border-slate-200 bg-white p-1.5 text-slate-700 transition hover:border-teal-200 hover:bg-teal-50 hover:text-teal-700 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:hover:border-teal-700 dark:hover:bg-teal-900/30 dark:hover:text-teal-300"
+                        >
+                          <BarChart3 className="h-3.5 w-3.5" />
+                        </button>
+                      )}
                       {canDelete && (
                         <button
                           type="button"
