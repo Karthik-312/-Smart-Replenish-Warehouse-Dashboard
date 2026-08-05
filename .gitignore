@@ -1,5 +1,6 @@
 # Backend
 backend/build/
+backend/bin/
 backend/.gradle/
 backend/data/
 

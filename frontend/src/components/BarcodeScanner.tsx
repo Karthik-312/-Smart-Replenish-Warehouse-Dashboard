@@ -9,6 +9,7 @@ export interface ScannedNewItem {
   category: string;
   currentStock: number;
   minThreshold: number;
+  price?: number;
 }
 
 interface LookupResult {
@@ -56,6 +57,7 @@ export default function BarcodeScanner({ items, onFound, onAddNew, onClose }: Ba
   const [notFound, setNotFound] = useState<string | null>(null);
   const [manualName, setManualName] = useState('');
   const [manualCategory, setManualCategory] = useState('General');
+  const [manualPrice, setManualPrice] = useState<number | ''>('');
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const readerDivId = 'qr-reader';
 
@@ -83,6 +85,7 @@ export default function BarcodeScanner({ items, onFound, onAddNew, onClose }: Ba
             category: result.category,
             currentStock: 1,
             minThreshold: 5,
+            price: 0,
           });
           setAdded(result);
           setTimeout(() => onClose(), 2500);
@@ -107,6 +110,7 @@ export default function BarcodeScanner({ items, onFound, onAddNew, onClose }: Ba
       category: manualCategory || 'General',
       currentStock: 1,
       minThreshold: 5,
+      price: manualPrice === '' ? undefined : manualPrice,
     });
     setAdded({ name: manualName.trim(), brand: '', category: manualCategory, barcode: notFound });
     setNotFound(null);
@@ -206,6 +210,7 @@ export default function BarcodeScanner({ items, onFound, onAddNew, onClose }: Ba
                 <option value="Electronics">Electronics</option>
                 <option value="Office Supplies">Office Supplies</option>
               </select>
+              <input type="number" value={manualPrice} onChange={(e) => setManualPrice(e.target.value === '' ? '' : Number(e.target.value))} placeholder="Price (₹)" min={0} step={0.01} className="w-full rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:border-amber-700 dark:bg-slate-700 dark:text-slate-100" />
               <button type="button" onClick={handleManualAdd} disabled={!manualName.trim()} className="flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-50">
                 <PackagePlus className="h-4 w-4" />
                 Add to Inventory

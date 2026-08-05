@@ -170,7 +170,7 @@ function AppContent() {
     }
   };
 
-  const handleEdit = async (id: number, data: { name: string; sku: string; category: string; minThreshold: number }) => {
+  const handleEdit = async (id: number, data: { name: string; sku: string; category: string; minThreshold: number; price?: number }) => {
     if (!user) return;
     try {
       await updateItem(id, data, user.token);

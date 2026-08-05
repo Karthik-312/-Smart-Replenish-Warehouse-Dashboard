@@ -6,6 +6,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -27,6 +28,9 @@ import java.util.List;
 @EnableWebSecurity
 public class SecurityConfig {
 
+    @Value("${stockpulse.api.key:}")
+    private String apiKey;
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
                                                    GoogleAuthService googleAuthService) throws Exception {
@@ -47,25 +51,42 @@ public class SecurityConfig {
                 )
                 .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()))
                 .addFilterBefore(
-                        new BearerTokenFilter(googleAuthService),
+                        new AuthTokenFilter(googleAuthService, apiKey),
                         UsernamePasswordAuthenticationFilter.class
                 );
 
         return http.build();
     }
 
-    static class BearerTokenFilter extends OncePerRequestFilter {
+    static class AuthTokenFilter extends OncePerRequestFilter {
 
         private final GoogleAuthService googleAuthService;
+        private final String apiKey;
 
-        BearerTokenFilter(GoogleAuthService googleAuthService) {
+        AuthTokenFilter(GoogleAuthService googleAuthService, String apiKey) {
             this.googleAuthService = googleAuthService;
+            this.apiKey = apiKey;
         }
 
         @Override
         protected void doFilterInternal(HttpServletRequest request,
                                         HttpServletResponse response,
                                         FilterChain filterChain) throws ServletException, IOException {
+
+            // API key auth for service-to-service calls (ecommerce backend)
+            String requestApiKey = request.getHeader("X-Api-Key");
+            if (apiKey != null && !apiKey.isBlank()
+                    && requestApiKey != null && apiKey.equals(requestApiKey)) {
+                var auth = new UsernamePasswordAuthenticationToken(
+                        "service-account", null,
+                        List.of(new SimpleGrantedAuthority("ROLE_MANAGER"))
+                );
+                SecurityContextHolder.getContext().setAuthentication(auth);
+                filterChain.doFilter(request, response);
+                return;
+            }
+
+            // Google OAuth token auth for dashboard users
             String authHeader = request.getHeader("Authorization");
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
                 String token = authHeader.substring(7);
