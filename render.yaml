@@ -11,3 +11,5 @@ services:
         value: prod
       - key: CORS_ALLOWED_ORIGINS
         sync: false
+      - key: STOCKPULSE_API_KEY
+        sync: false
