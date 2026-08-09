@@ -45,11 +45,9 @@ public class InventoryService {
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").ascending());
         String searchParam = (search != null && !search.isBlank()) ? search.trim() : null;
         String categoryParam = (category != null && !category.isBlank() && !"ALL".equalsIgnoreCase(category)) ? category : null;
-        StockStatus statusParam = null;
+        String statusParam = null;
         if (status != null && !status.isBlank() && !"ALL".equalsIgnoreCase(status)) {
-            try {
-                statusParam = StockStatus.valueOf(status.toUpperCase());
-            } catch (IllegalArgumentException ignored) {}
+            statusParam = status.toUpperCase();
         }
         return repository.findFiltered(searchParam, categoryParam, statusParam, pageable);
     }

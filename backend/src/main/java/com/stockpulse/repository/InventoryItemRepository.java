@@ -21,15 +21,23 @@ public interface InventoryItemRepository extends JpaRepository<InventoryItem, Lo
 
     Optional<InventoryItem> findBySkuIgnoreCase(String sku);
 
-    @Query("SELECT i FROM InventoryItem i WHERE " +
-            "(:search IS NULL OR LOWER(i.name) LIKE LOWER(CONCAT('%', :search, '%')) " +
-            "OR LOWER(i.sku) LIKE LOWER(CONCAT('%', :search, '%')) " +
-            "OR LOWER(i.category) LIKE LOWER(CONCAT('%', :search, '%'))) " +
-            "AND (:category IS NULL OR i.category = :category) " +
-            "AND (:status IS NULL OR i.status = :status)")
+    @Query(value = "SELECT * FROM inventory_items WHERE " +
+            "(CAST(:search AS TEXT) IS NULL OR LOWER(name) LIKE LOWER(CONCAT('%', CAST(:search AS TEXT), '%')) " +
+            "OR LOWER(sku) LIKE LOWER(CONCAT('%', CAST(:search AS TEXT), '%')) " +
+            "OR LOWER(category) LIKE LOWER(CONCAT('%', CAST(:search AS TEXT), '%'))) " +
+            "AND (CAST(:category AS TEXT) IS NULL OR category = CAST(:category AS TEXT)) " +
+            "AND (CAST(:status AS TEXT) IS NULL OR status = CAST(:status AS TEXT)) " +
+            "ORDER BY id",
+            countQuery = "SELECT count(*) FROM inventory_items WHERE " +
+            "(CAST(:search AS TEXT) IS NULL OR LOWER(name) LIKE LOWER(CONCAT('%', CAST(:search AS TEXT), '%')) " +
+            "OR LOWER(sku) LIKE LOWER(CONCAT('%', CAST(:search AS TEXT), '%')) " +
+            "OR LOWER(category) LIKE LOWER(CONCAT('%', CAST(:search AS TEXT), '%'))) " +
+            "AND (CAST(:category AS TEXT) IS NULL OR category = CAST(:category AS TEXT)) " +
+            "AND (CAST(:status AS TEXT) IS NULL OR status = CAST(:status AS TEXT))",
+            nativeQuery = true)
     Page<InventoryItem> findFiltered(
             @Param("search") String search,
             @Param("category") String category,
-            @Param("status") StockStatus status,
+            @Param("status") String status,
             Pageable pageable);
 }
