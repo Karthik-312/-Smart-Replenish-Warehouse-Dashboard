@@ -1,6 +1,8 @@
 package com.stockpulse.model;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.LocalDateTime;
 
 @Entity
@@ -26,7 +28,8 @@ public class PurchaseOrder {
     private int quantity;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, columnDefinition = "varchar(50)")
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(nullable = false)
     private PurchaseOrderStatus status = PurchaseOrderStatus.PENDING;
 
     @Column(name = "created_at")

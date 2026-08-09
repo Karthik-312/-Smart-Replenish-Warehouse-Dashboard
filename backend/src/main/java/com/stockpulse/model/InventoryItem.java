@@ -8,6 +8,8 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "inventory_items")
@@ -33,7 +35,8 @@ public class InventoryItem {
     private int minThreshold;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, columnDefinition = "varchar(50)")
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(nullable = false)
     private StockStatus status;
 
     @Column(name = "price")

@@ -8,6 +8,8 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 
@@ -26,7 +28,8 @@ public class StockAuditLog {
     private String itemName;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, columnDefinition = "varchar(50)")
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(nullable = false)
     private AuditAction action;
 
     private String details;
@@ -38,7 +41,7 @@ public class StockAuditLog {
     @Column(nullable = false)
     private String changedBy;
 
-    @Column(name = "changed_at", nullable = false)
+    @Column(nullable = false)
     private LocalDateTime timestamp;
 
     public StockAuditLog() {
