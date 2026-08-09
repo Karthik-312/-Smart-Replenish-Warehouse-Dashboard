@@ -62,8 +62,16 @@ public class InventoryService {
         if (item.getCurrentStock() < 0 || item.getMinThreshold() < 0) {
             throw new IllegalArgumentException("Stock values cannot be negative");
         }
-        updateStatus(item);
+        StockStatus newStatus = calculateStatus(item.getCurrentStock(), item.getMinThreshold());
+        item.setStatus(newStatus);
         InventoryItem saved = repository.save(item);
+
+        if (newStatus == StockStatus.LOW || newStatus == StockStatus.OUT_OF_STOCK) {
+            logReorderAlert(saved.getSku(), newStatus);
+            emailService.sendLowStockAlert(saved, newStatus);
+            reorderService.generateOrderIfNeeded(saved);
+        }
+
         auditService.log(saved.getId(), saved.getName(), AuditAction.CREATE,
                 "Created with stock " + saved.getCurrentStock(), null, saved.getCurrentStock());
         broadcaster.broadcastUpdate("CREATE", saved);
