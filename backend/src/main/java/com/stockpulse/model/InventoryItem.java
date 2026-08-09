@@ -33,7 +33,7 @@ public class InventoryItem {
     private int minThreshold;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "varchar(50)")
     private StockStatus status;
 
     @Column(name = "price")

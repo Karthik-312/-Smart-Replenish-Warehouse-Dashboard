@@ -21,7 +21,7 @@ public class UserRole {
     private String email;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "varchar(50)")
     private Role role;
 
     public UserRole() {
