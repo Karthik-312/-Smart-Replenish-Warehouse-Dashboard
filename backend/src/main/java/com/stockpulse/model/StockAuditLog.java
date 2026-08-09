@@ -38,7 +38,7 @@ public class StockAuditLog {
     @Column(nullable = false)
     private String changedBy;
 
-    @Column(nullable = false)
+    @Column(name = "changed_at", nullable = false)
     private LocalDateTime timestamp;
 
     public StockAuditLog() {
