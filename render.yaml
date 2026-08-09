@@ -13,3 +13,13 @@ services:
         sync: false
       - key: STOCKPULSE_API_KEY
         sync: false
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        value: "5432"
+      - key: DB_NAME
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
