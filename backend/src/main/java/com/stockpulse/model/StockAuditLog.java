@@ -26,7 +26,7 @@ public class StockAuditLog {
     private String itemName;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "varchar(50)")
     private AuditAction action;
 
     private String details;

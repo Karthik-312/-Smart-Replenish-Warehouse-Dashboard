@@ -26,7 +26,7 @@ public class PurchaseOrder {
     private int quantity;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "varchar(50)")
     private PurchaseOrderStatus status = PurchaseOrderStatus.PENDING;
 
     @Column(name = "created_at")
