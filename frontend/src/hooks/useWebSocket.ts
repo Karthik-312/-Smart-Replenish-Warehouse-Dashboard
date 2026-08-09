@@ -1,7 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
 import { Client } from '@stomp/stompjs';
 
-const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8080/ws/websocket';
+function deriveWsUrl(): string {
+  if (import.meta.env.VITE_WS_URL) return import.meta.env.VITE_WS_URL;
+
+  const apiBase = import.meta.env.VITE_API_BASE_URL;
+  if (apiBase) {
+    const url = new URL(apiBase);
+    url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+    url.pathname = '/ws/websocket';
+    return url.toString();
+  }
+
+  return 'ws://localhost:8080/ws/websocket';
+}
+
+const POLL_INTERVAL_MS = 30_000;
 
 export function useWebSocket(onMessage: () => void) {
   const [connected, setConnected] = useState(false);
@@ -10,8 +24,9 @@ export function useWebSocket(onMessage: () => void) {
   onMessageRef.current = onMessage;
 
   useEffect(() => {
+    const wsUrl = deriveWsUrl();
     const client = new Client({
-      brokerURL: WS_URL,
+      brokerURL: wsUrl,
       reconnectDelay: 5000,
       onConnect: () => {
         setConnected(true);
@@ -31,6 +46,13 @@ export function useWebSocket(onMessage: () => void) {
       client.deactivate();
     };
   }, []);
+
+  // Polling fallback when WebSocket is not connected
+  useEffect(() => {
+    if (connected) return;
+    const id = setInterval(() => onMessageRef.current(), POLL_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, [connected]);
 
   return { connected };
 }
