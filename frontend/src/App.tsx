@@ -22,6 +22,7 @@ import DashboardCharts from './components/DashboardCharts';
 import ConfirmDialog from './components/ConfirmDialog';
 import EditItemModal from './components/EditItemModal';
 import ForecastPanel from './components/ForecastPanel';
+import InstallPrompt from './components/InstallPrompt';
 import InventoryFilters, { type InventoryFilterState } from './components/InventoryFilters';
 import InventoryTable from './components/InventoryTable';
 import LoginModal from './components/LoginModal';
@@ -493,6 +494,8 @@ function AppContent() {
         onConfirm={confirmState.onConfirm}
         onCancel={() => setConfirmState((prev) => ({ ...prev, open: false }))}
       />
+
+      <InstallPrompt />
     </div>
   );
 }
