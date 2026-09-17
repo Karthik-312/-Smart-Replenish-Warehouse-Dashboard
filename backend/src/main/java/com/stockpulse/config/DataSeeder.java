@@ -76,6 +76,11 @@ public class DataSeeder implements CommandLineRunner {
         admin2.setEmail("karthikeyadaggupati11@gmail.com");
         admin2.setRole(Role.ADMIN);
         roleRepo.save(admin2);
+
+        UserRole admin3 = new UserRole();
+        admin3.setEmail("divija188@gmail.com");
+        admin3.setRole(Role.ADMIN);
+        roleRepo.save(admin3);
     }
 
     private void seedSuppliers() {
