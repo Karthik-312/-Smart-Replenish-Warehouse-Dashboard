@@ -257,84 +257,87 @@ function AppContent() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-slate-50 to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-900">
+    <div className="min-h-screen overflow-x-hidden bg-gradient-to-br from-slate-100 via-slate-50 to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-900">
       <header className="border-b border-slate-200/80 bg-white/80 backdrop-blur dark:border-slate-700/80 dark:bg-slate-900/80">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-5 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 p-2.5 shadow-lg shadow-indigo-200 dark:shadow-indigo-900/40">
-              <Zap className="h-6 w-6 text-white" />
+        <div className="mx-auto max-w-7xl px-4 py-3 sm:py-5 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <div className="shrink-0 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 p-2 sm:p-2.5 shadow-lg shadow-indigo-200 dark:shadow-indigo-900/40">
+                <Zap className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+              </div>
+              <div className="min-w-0">
+                <h1 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100 truncate">StockPulse</h1>
+                <p className="hidden sm:block text-sm text-slate-500 dark:text-slate-400">Inventory Replenishment System</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">StockPulse</h1>
-              <p className="text-sm text-slate-500 dark:text-slate-400">Inventory Replenishment System</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            {isLoggedIn ? (
-              <>
-                <div className="flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-1.5 ring-1 ring-inset ring-emerald-200 dark:bg-emerald-900/30 dark:ring-emerald-700">
-                  {user.picture && (
-                    <img
-                      src={user.picture}
-                      alt=""
-                      className="h-6 w-6 rounded-full"
-                      referrerPolicy="no-referrer"
-                    />
-                  )}
-                  <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">
-                    {user.name || user.email}
-                  </span>
-                  <span className="rounded-md bg-indigo-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300">
-                    {user.role}
-                  </span>
-                </div>
+            <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+              {isLoggedIn ? (
+                <>
+                  <div className="hidden sm:flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-1.5 ring-1 ring-inset ring-emerald-200 dark:bg-emerald-900/30 dark:ring-emerald-700">
+                    {user.picture && (
+                      <img
+                        src={user.picture}
+                        alt=""
+                        className="h-6 w-6 rounded-full"
+                        referrerPolicy="no-referrer"
+                      />
+                    )}
+                    <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+                      {user.name || user.email}
+                    </span>
+                    <span className="rounded-md bg-indigo-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300">
+                      {user.role}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void handleLogout()}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2.5 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    <span className="hidden sm:inline">Logout</span>
+                  </button>
+                </>
+              ) : (
                 <button
                   type="button"
-                  onClick={() => void handleLogout()}
-                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                  onClick={() => setShowLogin(true)}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:from-indigo-700 hover:to-violet-700"
                 >
-                  <LogOut className="h-4 w-4" />
-                  Logout
+                  <LogIn className="h-4 w-4" />
+                  <span className="hidden sm:inline">Login to Edit</span>
+                  <span className="sm:hidden text-xs">Login</span>
                 </button>
-              </>
-            ) : (
+              )}
               <button
                 type="button"
-                onClick={() => setShowLogin(true)}
-                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:from-indigo-700 hover:to-violet-700"
+                onClick={() => setShowScanner(true)}
+                className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white p-2 text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                title="Scan barcode/QR code"
               >
-                <LogIn className="h-4 w-4" />
-                Login to Edit
+                <ScanBarcode className="h-4 w-4" />
               </button>
-            )}
-            <button
-              type="button"
-              onClick={() => setShowScanner(true)}
-              className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white p-2 text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-              title="Scan barcode/QR code"
-            >
-              <ScanBarcode className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setDark((d) => !d)}
-              className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white p-2 text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-              title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
-            >
-              {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </button>
-            {wsConnected && (
-              <span className="flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:ring-emerald-700">
-                <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
-                Live
-              </span>
-            )}
-            <RefreshButton onClick={() => void loadData()} loading={loading} />
+              <button
+                type="button"
+                onClick={() => setDark((d) => !d)}
+                className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white p-2 text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+              >
+                {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              </button>
+              {wsConnected && (
+                <span className="hidden sm:flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:ring-emerald-700">
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
+                  Live
+                </span>
+              )}
+              <RefreshButton onClick={() => void loadData()} loading={loading} />
+            </div>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
+      <main className="mx-auto max-w-7xl space-y-6 sm:space-y-8 px-3 py-6 sm:px-6 sm:py-8 lg:px-8">
         {!loading && <LowStockBanner items={alertItems} />}
 
         <StatusOverview summary={summary} loading={loading} />
@@ -356,30 +359,31 @@ function AppContent() {
         />
 
         <section>
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Boxes className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-              <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Inventory List</h2>
+              <h2 className="text-base sm:text-lg font-semibold text-slate-800 dark:text-slate-100">Inventory List</h2>
             </div>
             <div className="flex items-center gap-2">
               {canEdit && selectedIds.size > 0 && (
                 <button
                   type="button"
                   onClick={() => setShowBulkUpdate(true)}
-                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:from-violet-700 hover:to-indigo-700"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 px-3 py-2 text-xs sm:text-sm font-semibold text-white shadow-sm transition hover:from-violet-700 hover:to-indigo-700"
                 >
                   <Layers className="h-4 w-4" />
-                  Bulk Update ({selectedIds.size})
+                  Bulk ({selectedIds.size})
                 </button>
               )}
               {items.length > 0 && (
                 <button
                   type="button"
                   onClick={() => exportToCsv(allItems)}
-                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                 >
                   <Download className="h-4 w-4" />
-                  Export CSV
+                  <span className="hidden sm:inline">Export CSV</span>
+                  <span className="sm:hidden">CSV</span>
                 </button>
               )}
             </div>

@@ -35,13 +35,13 @@ export default function InventoryFilters({
     filters.search !== '' || filters.category !== 'ALL' || filters.status !== 'ALL';
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+    <div className="rounded-2xl border border-slate-200 bg-white p-3 sm:p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Filter className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-          <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Search &amp; Filter</h2>
+          <h2 className="text-base sm:text-lg font-semibold text-slate-800 dark:text-slate-100">Search &amp; Filter</h2>
         </div>
-        <p className="text-sm text-slate-500 dark:text-slate-400">
+        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
           Showing {resultCount} of {totalCount} items
         </p>
       </div>
