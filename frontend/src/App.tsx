@@ -253,6 +253,7 @@ function AppContent() {
     }
     setUser(null);
     setSelectedIds(new Set());
+    setShowScanner(false);
     toast('Logged out successfully', 'info');
   };
 
@@ -311,9 +312,10 @@ function AppContent() {
               )}
               <button
                 type="button"
+                disabled={!isLoggedIn}
                 onClick={() => setShowScanner(true)}
-                className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white p-2 text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-                title="Scan barcode/QR code"
+                className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white p-2 text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-white dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 dark:disabled:hover:bg-slate-800"
+                title={isLoggedIn ? 'Scan barcode/QR code' : 'Login to enable'}
               >
                 <ScanBarcode className="h-4 w-4" />
               </button>
@@ -461,7 +463,7 @@ function AppContent() {
         <ForecastPanel item={forecastItem} onClose={() => setForecastItem(null)} />
       )}
 
-      {showScanner && (
+      {showScanner && isLoggedIn && (
         <BarcodeScanner
           items={allItems}
           onFound={(item) => {
