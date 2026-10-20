@@ -20,6 +20,24 @@ interface LookupResult {
   imageUrl?: string;
 }
 
+// A scanned product waiting for the user to fill in quantity and price before it is saved.
+interface Draft {
+  name: string;
+  sku: string;
+  category: string;
+  imageUrl?: string;
+  fromLookup: boolean;
+}
+
+const CATEGORIES = [
+  'General',
+  'Food & Beverages',
+  'Household',
+  'Personal Care',
+  'Electronics',
+  'Office Supplies',
+];
+
 async function lookupBarcodeFromBackend(barcode: string): Promise<LookupResult | null> {
   try {
     const base = import.meta.env.VITE_API_BASE_URL
@@ -54,17 +72,24 @@ export default function BarcodeScanner({ items, onFound, onAddNew, onClose }: Ba
   const [error, setError] = useState<string | null>(null);
   const [lookingUp, setLookingUp] = useState(false);
   const [added, setAdded] = useState<LookupResult | null>(null);
-  const [notFound, setNotFound] = useState<string | null>(null);
-  const [manualName, setManualName] = useState('');
-  const [manualCategory, setManualCategory] = useState('General');
-  const [manualPrice, setManualPrice] = useState<number | ''>('');
+  const [draft, setDraft] = useState<Draft | null>(null);
+  const [qty, setQty] = useState<number | ''>(1);
+  const [price, setPrice] = useState<number | ''>('');
+  const [threshold, setThreshold] = useState<number | ''>(5);
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const readerDivId = 'qr-reader';
+
+  const beginDraft = (next: Draft) => {
+    setDraft(next);
+    setQty(1);
+    setPrice('');
+    setThreshold(5);
+  };
 
   const handleBarcode = async (barcode: string) => {
     setError(null);
     setAdded(null);
-    setNotFound(null);
+    setDraft(null);
 
     const found = items.find(
       (item) => item.sku.toLowerCase() === barcode.trim().toLowerCase(),
@@ -74,53 +99,67 @@ export default function BarcodeScanner({ items, onFound, onAddNew, onClose }: Ba
       return;
     }
 
+    if (!onAddNew) {
+      setError('Login required to add new items to inventory.');
+      return;
+    }
+
     setLookingUp(true);
     try {
       const result = await lookupBarcodeFromBackend(barcode.trim());
       if (result) {
-        if (onAddNew) {
-          onAddNew({
-            name: result.name,
-            sku: result.barcode,
-            category: result.category,
-            currentStock: 1,
-            minThreshold: 5,
-            price: 0,
-          });
-          setAdded(result);
-          setTimeout(() => onClose(), 2500);
-        } else {
-          setError('Login required to add new items to inventory.');
-        }
+        beginDraft({
+          name: result.name,
+          sku: result.barcode,
+          category: result.category,
+          imageUrl: result.imageUrl,
+          fromLookup: true,
+        });
       } else {
-        setNotFound(barcode.trim());
+        beginDraft({ name: '', sku: barcode.trim(), category: 'General', fromLookup: false });
       }
     } catch {
-      setNotFound(barcode.trim());
+      beginDraft({ name: '', sku: barcode.trim(), category: 'General', fromLookup: false });
     } finally {
       setLookingUp(false);
     }
   };
 
-  const handleManualAdd = () => {
-    if (!notFound || !manualName.trim() || !onAddNew) return;
+  const draftValid =
+    draft !== null &&
+    draft.name.trim() !== '' &&
+    qty !== '' &&
+    Number(qty) >= 0 &&
+    price !== '' &&
+    Number(price) >= 0 &&
+    threshold !== '' &&
+    Number(threshold) >= 0;
+
+  const handleConfirmAdd = () => {
+    if (!draft || !draftValid || !onAddNew) return;
     onAddNew({
-      name: manualName.trim(),
-      sku: notFound,
-      category: manualCategory || 'General',
-      currentStock: 1,
-      minThreshold: 5,
-      price: manualPrice === '' ? undefined : manualPrice,
+      name: draft.name.trim(),
+      sku: draft.sku,
+      category: draft.category || 'General',
+      currentStock: Number(qty),
+      minThreshold: Number(threshold),
+      price: Number(price),
     });
-    setAdded({ name: manualName.trim(), brand: '', category: manualCategory, barcode: notFound });
-    setNotFound(null);
+    setAdded({
+      name: draft.name.trim(),
+      brand: '',
+      category: draft.category,
+      barcode: draft.sku,
+      imageUrl: draft.imageUrl,
+    });
+    setDraft(null);
     setTimeout(() => onClose(), 2000);
   };
 
   const startScanner = async () => {
     setError(null);
     setAdded(null);
-    setNotFound(null);
+    setDraft(null);
     setScanning(true);
     try {
       const scanner = new Html5Qrcode(readerDivId);
@@ -195,26 +234,65 @@ export default function BarcodeScanner({ items, onFound, onAddNew, onClose }: Ba
               </div>
             </div>
           </div>
-        ) : notFound && onAddNew ? (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-900/20">
-            <p className="mb-3 text-sm text-amber-800 dark:text-amber-200">
-              Barcode <span className="font-mono font-bold">{notFound}</span> not found online. Enter product name:
-            </p>
+        ) : draft && onAddNew ? (
+          <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4 dark:border-indigo-800 dark:bg-indigo-900/20">
+            {draft.fromLookup ? (
+              <div className="mb-3 flex items-start gap-3">
+                {draft.imageUrl && <img src={draft.imageUrl} alt={draft.name} className="h-14 w-14 rounded-lg object-cover" />}
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-indigo-600" />
+                    <span className="text-xs font-semibold uppercase tracking-wide text-indigo-700 dark:text-indigo-300">Product found</span>
+                  </div>
+                  <p className="mt-1 text-xs text-slate-500">
+                    <span className="font-mono">{draft.sku}</span> · confirm the details below
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <p className="mb-3 text-sm text-amber-700 dark:text-amber-300">
+                Barcode <span className="font-mono font-bold">{draft.sku}</span> not found online. Enter the details:
+              </p>
+            )}
+
             <div className="space-y-2">
-              <input type="text" value={manualName} onChange={(e) => setManualName(e.target.value)} placeholder="Product name (e.g. Godrej Fab Liquid Detergent)" autoFocus className="w-full rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:border-amber-700 dark:bg-slate-700 dark:text-slate-100" />
-              <select value={manualCategory} onChange={(e) => setManualCategory(e.target.value)} className="w-full rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-amber-700 dark:bg-slate-700 dark:text-slate-100">
-                <option value="General">General</option>
-                <option value="Food & Beverages">Food & Beverages</option>
-                <option value="Household">Household</option>
-                <option value="Personal Care">Personal Care</option>
-                <option value="Electronics">Electronics</option>
-                <option value="Office Supplies">Office Supplies</option>
-              </select>
-              <input type="number" value={manualPrice} onChange={(e) => setManualPrice(e.target.value === '' ? '' : Number(e.target.value))} placeholder="Price (₹)" min={0} step={0.01} className="w-full rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:border-amber-700 dark:bg-slate-700 dark:text-slate-100" />
-              <button type="button" onClick={handleManualAdd} disabled={!manualName.trim()} className="flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-50">
-                <PackagePlus className="h-4 w-4" />
-                Add to Inventory
-              </button>
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">Product name</span>
+                <input type="text" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="e.g. Godrej Fab Liquid Detergent" autoFocus={!draft.fromLookup} className="w-full rounded-lg border border-indigo-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:border-indigo-700 dark:bg-slate-700 dark:text-slate-100" />
+              </label>
+
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">Category</span>
+                <select value={CATEGORIES.includes(draft.category) ? draft.category : 'General'} onChange={(e) => setDraft({ ...draft, category: e.target.value })} className="w-full rounded-lg border border-indigo-200 bg-white px-3 py-2 text-sm text-slate-900 dark:border-indigo-700 dark:bg-slate-700 dark:text-slate-100">
+                  {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </label>
+
+              <div className="grid grid-cols-2 gap-2">
+                <label className="block">
+                  <span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">Quantity</span>
+                  <input type="number" value={qty} onChange={(e) => setQty(e.target.value === '' ? '' : Number(e.target.value))} min={0} step={1} autoFocus={draft.fromLookup} className="w-full rounded-lg border border-indigo-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:border-indigo-700 dark:bg-slate-700 dark:text-slate-100" />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">Price (₹)</span>
+                  <input type="number" value={price} onChange={(e) => setPrice(e.target.value === '' ? '' : Number(e.target.value))} placeholder="0.00" min={0} step={0.01} className="w-full rounded-lg border border-indigo-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:border-indigo-700 dark:bg-slate-700 dark:text-slate-100" />
+                </label>
+              </div>
+
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">Low-stock threshold</span>
+                <input type="number" value={threshold} onChange={(e) => setThreshold(e.target.value === '' ? '' : Number(e.target.value))} min={0} step={1} className="w-full rounded-lg border border-indigo-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:border-indigo-700 dark:bg-slate-700 dark:text-slate-100" />
+              </label>
+
+              <div className="flex gap-2 pt-1">
+                <button type="button" onClick={() => setDraft(null)} className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200">
+                  Cancel
+                </button>
+                <button type="button" onClick={handleConfirmAdd} disabled={!draftValid} className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-50">
+                  <PackagePlus className="h-4 w-4" />
+                  Add to Inventory
+                </button>
+              </div>
             </div>
           </div>
         ) : lookingUp ? (
