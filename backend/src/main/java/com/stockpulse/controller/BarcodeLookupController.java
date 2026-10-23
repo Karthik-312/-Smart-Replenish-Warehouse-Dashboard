@@ -26,8 +26,17 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public class BarcodeLookupController {
 
     private static final Logger log = LoggerFactory.getLogger(BarcodeLookupController.class);
+    /**
+     * Open Food Facts resolves most barcodes we see, so it gets a longer budget: when it
+     * responds slowly the request used to lapse and fall through to a weaker source that
+     * knows the product name but has no photo. The fallbacks stay short so that a lookup
+     * which misses everywhere still fails reasonably fast.
+     */
+    private static final Duration PRIMARY_TIMEOUT = Duration.ofSeconds(8);
+    private static final Duration FALLBACK_TIMEOUT = Duration.ofSeconds(4);
+
     private final HttpClient httpClient = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(4))
+            .connectTimeout(PRIMARY_TIMEOUT)
             .followRedirects(HttpClient.Redirect.NORMAL)
             .build();
     private final ObjectMapper mapper = new ObjectMapper();
@@ -38,15 +47,15 @@ public class BarcodeLookupController {
         log.info("Looking up barcode: {}", barcode);
 
         // 1. Try Open Food Facts
-        var result = tryOpenFacts("world.openfoodfacts.org", barcode);
+        var result = tryOpenFacts("world.openfoodfacts.org", barcode, PRIMARY_TIMEOUT);
         if (result != null) return ResponseEntity.ok(result);
 
         // 2. Try Open Products Facts (household, cleaning, etc.)
-        result = tryOpenFacts("world.openproductsfacts.org", barcode);
+        result = tryOpenFacts("world.openproductsfacts.org", barcode, FALLBACK_TIMEOUT);
         if (result != null) return ResponseEntity.ok(result);
 
         // 3. Try Open Beauty Facts
-        result = tryOpenFacts("world.openbeautyfacts.org", barcode);
+        result = tryOpenFacts("world.openbeautyfacts.org", barcode, FALLBACK_TIMEOUT);
         if (result != null) return ResponseEntity.ok(result);
 
         // 4. Try UPC ItemDB
@@ -65,12 +74,12 @@ public class BarcodeLookupController {
         return ResponseEntity.ok(Map.of("found", false, "barcode", barcode));
     }
 
-    private Map<String, Object> tryOpenFacts(String domain, String barcode) {
+    private Map<String, Object> tryOpenFacts(String domain, String barcode, Duration timeout) {
         try {
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create("https://" + domain + "/api/v0/product/" + barcode + ".json"))
                     .header("User-Agent", "StockPulse/1.0 (inventory-app)")
-                    .timeout(Duration.ofSeconds(4))
+                    .timeout(timeout)
                     .GET()
                     .build();
 
@@ -86,7 +95,10 @@ public class BarcodeLookupController {
 
             String brand = product.path("brands").asText("");
             String category = extractCategoryFromFacts(product);
-            String imageUrl = getFirst(product, "image_front_small_url", "image_front_url", "image_url");
+            // These fields differ only in resolution — the URLs end in the pixel width.
+            // Prefer the 400px front shot: the "small" variant is 200px and looks blurry
+            // on a product card, while the full original is ~250 KB and too heavy for a grid.
+            String imageUrl = getFirst(product, "image_front_url", "image_url", "image_front_small_url");
             String fullName = brand.isEmpty() ? name : brand + " " + name;
 
             log.info("Found '{}' on {}", fullName, domain);
@@ -102,7 +114,7 @@ public class BarcodeLookupController {
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create("https://api.upcitemdb.com/prod/trial/lookup?upc=" + barcode))
                     .header("User-Agent", "StockPulse/1.0")
-                    .timeout(Duration.ofSeconds(4))
+                    .timeout(FALLBACK_TIMEOUT)
                     .GET()
                     .build();
 
@@ -126,7 +138,16 @@ public class BarcodeLookupController {
             }
 
             log.info("Found '{}' on UPC ItemDB", name);
-            return buildResult(name, brand, category, barcode, imageUrl, "upcitemdb.com");
+            Map<String, Object> result = buildResult(name, brand, category, barcode, imageUrl, "upcitemdb.com");
+
+            // UPC ItemDB is the only source carrying price data, and it reports US retail
+            // in dollars. Tag the currency so the client does not present it as rupees.
+            double lowest = item.path("lowest_recorded_price").asDouble(0);
+            if (lowest > 0) {
+                result.put("price", lowest);
+                result.put("priceCurrency", "USD");
+            }
+            return result;
         } catch (Exception e) {
             log.debug("UPC ItemDB failed: {}", e.getMessage());
             return null;
@@ -142,7 +163,7 @@ public class BarcodeLookupController {
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(url))
                     .header("User-Agent", "StockPulse/1.0")
-                    .timeout(Duration.ofSeconds(4))
+                    .timeout(FALLBACK_TIMEOUT)
                     .GET()
                     .build();
 
@@ -190,7 +211,7 @@ public class BarcodeLookupController {
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(url))
                     .header("User-Agent", "StockPulse/1.0")
-                    .timeout(Duration.ofSeconds(4))
+                    .timeout(FALLBACK_TIMEOUT)
                     .GET()
                     .build();
 
