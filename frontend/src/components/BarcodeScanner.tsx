@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { Camera, CheckCircle2, PackagePlus, Search, X } from 'lucide-react';
+import { Camera, CheckCircle2, ImagePlus, Loader2, PackagePlus, Search, X } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
 import type { InventoryItem } from '../api/inventory';
+import { isUploadConfigured, uploadImage } from '../api/imageUpload';
 
 export interface ScannedNewItem {
   name: string;
@@ -10,6 +11,7 @@ export interface ScannedNewItem {
   currentStock: number;
   minThreshold: number;
   price?: number;
+  imageUrl?: string;
 }
 
 interface LookupResult {
@@ -18,6 +20,9 @@ interface LookupResult {
   category: string;
   barcode: string;
   imageUrl?: string;
+  price?: number;
+  priceCurrency?: string;
+  source?: string;
 }
 
 // A scanned product waiting for the user to fill in quantity and price before it is saved.
@@ -27,6 +32,34 @@ interface Draft {
   category: string;
   imageUrl?: string;
   fromLookup: boolean;
+  /** True when the photo came back from a barcode database rather than an upload. */
+  imageFromLookup?: boolean;
+  /** Explains where a prefilled price came from, or why one could not be used. */
+  priceNote?: string;
+}
+
+// Barcode databases carry no Indian retail prices, so the price typed for a barcode is
+// kept locally and offered again the next time the same barcode is scanned.
+const PRICE_MEMORY_KEY = 'stockpulse.lastPriceBySku';
+
+function recallPrice(sku: string): number | undefined {
+  try {
+    const stored = JSON.parse(localStorage.getItem(PRICE_MEMORY_KEY) ?? '{}');
+    const value = stored[sku.toLowerCase()];
+    return typeof value === 'number' && value > 0 ? value : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function rememberPrice(sku: string, price: number) {
+  try {
+    const stored = JSON.parse(localStorage.getItem(PRICE_MEMORY_KEY) ?? '{}');
+    stored[sku.toLowerCase()] = price;
+    localStorage.setItem(PRICE_MEMORY_KEY, JSON.stringify(stored));
+  } catch {
+    // A full or unavailable localStorage should never block adding stock.
+  }
 }
 
 const CATEGORIES = [
@@ -37,6 +70,20 @@ const CATEGORIES = [
   'Electronics',
   'Office Supplies',
 ];
+
+const REMEMBERED_PRICE_NOTE = 'Prefilled with the price you last used for this barcode.';
+
+function priceNoteFor(
+  result: LookupResult,
+  inRupees: boolean,
+  remembered: number | undefined,
+): string | undefined {
+  if (inRupees) return undefined;
+  if (result.price != null) {
+    return `Listed at ${result.price} ${result.priceCurrency ?? 'USD'} on ${result.source ?? 'an overseas source'} — enter the local price.`;
+  }
+  return remembered != null ? REMEMBERED_PRICE_NOTE : undefined;
+}
 
 async function lookupBarcodeFromBackend(barcode: string): Promise<LookupResult | null> {
   try {
@@ -53,6 +100,9 @@ async function lookupBarcodeFromBackend(barcode: string): Promise<LookupResult |
       category: data.category || 'General',
       barcode: data.barcode || barcode,
       imageUrl: data.imageUrl || undefined,
+      price: typeof data.price === 'number' ? data.price : undefined,
+      priceCurrency: data.priceCurrency || undefined,
+      source: data.source || undefined,
     };
   } catch {
     return null;
@@ -76,14 +126,33 @@ export default function BarcodeScanner({ items, onFound, onAddNew, onClose }: Ba
   const [qty, setQty] = useState<number | ''>(1);
   const [price, setPrice] = useState<number | ''>('');
   const [threshold, setThreshold] = useState<number | ''>(5);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const scannerRef = useRef<Html5Qrcode | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const readerDivId = 'qr-reader';
 
-  const beginDraft = (next: Draft) => {
+  const beginDraft = (next: Draft, prefillPrice?: number) => {
     setDraft(next);
     setQty(1);
-    setPrice('');
+    setPrice(prefillPrice ?? '');
     setThreshold(5);
+    setUploadError(null);
+  };
+
+  const handleFilePick = async (file: File | undefined) => {
+    if (!file || !draft) return;
+    setUploadError(null);
+    setUploading(true);
+    try {
+      const url = await uploadImage(file);
+      setDraft({ ...draft, imageUrl: url, imageFromLookup: false });
+    } catch (e) {
+      setUploadError(e instanceof Error ? e.message : 'Upload failed.');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   const handleBarcode = async (barcode: string) => {
@@ -108,15 +177,33 @@ export default function BarcodeScanner({ items, onFound, onAddNew, onClose }: Ba
     try {
       const result = await lookupBarcodeFromBackend(barcode.trim());
       if (result) {
-        beginDraft({
-          name: result.name,
-          sku: result.barcode,
-          category: result.category,
-          imageUrl: result.imageUrl,
-          fromLookup: true,
-        });
+        const inRupees = result.price != null && result.priceCurrency === 'INR';
+        const remembered = recallPrice(result.barcode);
+        beginDraft(
+          {
+            name: result.name,
+            sku: result.barcode,
+            category: result.category,
+            imageUrl: result.imageUrl,
+            imageFromLookup: Boolean(result.imageUrl),
+            fromLookup: true,
+            priceNote: priceNoteFor(result, inRupees, remembered),
+          },
+          inRupees ? result.price : remembered,
+        );
       } else {
-        beginDraft({ name: '', sku: barcode.trim(), category: 'General', fromLookup: false });
+        const sku = barcode.trim();
+        const remembered = recallPrice(sku);
+        beginDraft(
+          {
+            name: '',
+            sku,
+            category: 'General',
+            fromLookup: false,
+            priceNote: remembered != null ? REMEMBERED_PRICE_NOTE : undefined,
+          },
+          remembered,
+        );
       }
     } catch {
       beginDraft({ name: '', sku: barcode.trim(), category: 'General', fromLookup: false });
@@ -130,13 +217,15 @@ export default function BarcodeScanner({ items, onFound, onAddNew, onClose }: Ba
     draft.name.trim() !== '' &&
     qty !== '' &&
     Number(qty) >= 0 &&
+    // Price is required: items used to land in inventory at ₹0.00 and stay that way.
     price !== '' &&
-    Number(price) >= 0 &&
+    Number(price) > 0 &&
     threshold !== '' &&
     Number(threshold) >= 0;
 
   const handleConfirmAdd = () => {
     if (!draft || !draftValid || !onAddNew) return;
+    rememberPrice(draft.sku, Number(price));
     onAddNew({
       name: draft.name.trim(),
       sku: draft.sku,
@@ -144,6 +233,7 @@ export default function BarcodeScanner({ items, onFound, onAddNew, onClose }: Ba
       currentStock: Number(qty),
       minThreshold: Number(threshold),
       price: Number(price),
+      imageUrl: draft.imageUrl,
     });
     setAdded({
       name: draft.name.trim(),
@@ -274,21 +364,68 @@ export default function BarcodeScanner({ items, onFound, onAddNew, onClose }: Ba
                   <input type="number" value={qty} onChange={(e) => setQty(e.target.value === '' ? '' : Number(e.target.value))} min={0} step={1} autoFocus={draft.fromLookup} className="w-full rounded-lg border border-indigo-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:border-indigo-700 dark:bg-slate-700 dark:text-slate-100" />
                 </label>
                 <label className="block">
-                  <span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">Price (₹)</span>
+                  <span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
+                    Price (₹) <span className="text-rose-500">*</span>
+                  </span>
                   <input type="number" value={price} onChange={(e) => setPrice(e.target.value === '' ? '' : Number(e.target.value))} placeholder="0.00" min={0} step={0.01} className="w-full rounded-lg border border-indigo-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:border-indigo-700 dark:bg-slate-700 dark:text-slate-100" />
                 </label>
               </div>
+
+              {draft.priceNote && (
+                <p className="text-xs text-slate-500 dark:text-slate-400">{draft.priceNote}</p>
+              )}
 
               <label className="block">
                 <span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">Low-stock threshold</span>
                 <input type="number" value={threshold} onChange={(e) => setThreshold(e.target.value === '' ? '' : Number(e.target.value))} min={0} step={1} className="w-full rounded-lg border border-indigo-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:border-indigo-700 dark:bg-slate-700 dark:text-slate-100" />
               </label>
 
+              <div>
+                <span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
+                  Product image
+                  {!draft.imageUrl && <span className="font-normal text-slate-400"> (optional)</span>}
+                </span>
+                <div className="flex items-center gap-3">
+                  {draft.imageUrl ? (
+                    <img src={draft.imageUrl} alt="" className="h-12 w-12 shrink-0 rounded-lg border border-indigo-200 object-cover dark:border-indigo-700" />
+                  ) : (
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-dashed border-indigo-300 text-indigo-300 dark:border-indigo-700">
+                      <ImagePlus className="h-5 w-5" />
+                    </div>
+                  )}
+
+                  {/* Once a photo is in hand there is nothing to ask for, so the upload
+                      control only appears when the lookup came back without one. */}
+                  {draft.imageUrl ? (
+                    <p className="flex-1 text-xs text-slate-500 dark:text-slate-400">
+                      {draft.imageFromLookup ? 'Fetched automatically from the product database.' : 'Photo uploaded.'}
+                    </p>
+                  ) : isUploadConfigured() ? (
+                    <>
+                      <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => void handleFilePick(e.target.files?.[0])} />
+                      <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading} className="flex items-center gap-2 rounded-lg border border-indigo-200 bg-white px-3 py-2 text-sm font-medium text-indigo-700 transition hover:bg-indigo-50 disabled:opacity-50 dark:border-indigo-700 dark:bg-slate-700 dark:text-indigo-300">
+                        {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
+                        {uploading ? 'Uploading...' : 'Add photo'}
+                      </button>
+                    </>
+                  ) : (
+                    <input type="url" value={draft.imageUrl ?? ''} onChange={(e) => setDraft({ ...draft, imageUrl: e.target.value || undefined })} placeholder="Paste an image URL" className="flex-1 rounded-lg border border-indigo-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:border-indigo-700 dark:bg-slate-700 dark:text-slate-100" />
+                  )}
+
+                  {draft.imageUrl && (
+                    <button type="button" onClick={() => setDraft({ ...draft, imageUrl: undefined, imageFromLookup: false })} className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-700" title="Remove image">
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+                {uploadError && <p className="mt-1 text-xs text-rose-600 dark:text-rose-400">{uploadError}</p>}
+              </div>
+
               <div className="flex gap-2 pt-1">
                 <button type="button" onClick={() => setDraft(null)} className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200">
                   Cancel
                 </button>
-                <button type="button" onClick={handleConfirmAdd} disabled={!draftValid} className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-50">
+                <button type="button" onClick={handleConfirmAdd} disabled={!draftValid || uploading} className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-50">
                   <PackagePlus className="h-4 w-4" />
                   Add to Inventory
                 </button>

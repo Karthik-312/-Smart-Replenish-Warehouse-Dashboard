@@ -45,6 +45,11 @@ public class InventoryItem {
     @Column(name = "supplier_id")
     private Long supplierId;
 
+    // Product photo, either returned by a barcode lookup or uploaded when the item
+    // is entered by hand. Only the URL is stored; the image itself is hosted elsewhere.
+    @Column(name = "image_url", length = 1000)
+    private String imageUrl;
+
     public InventoryItem() {
     }
 
@@ -127,6 +132,14 @@ public class InventoryItem {
 
     public void setSupplierId(Long supplierId) {
         this.supplierId = supplierId;
+    }
+
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
     }
 
     /**
