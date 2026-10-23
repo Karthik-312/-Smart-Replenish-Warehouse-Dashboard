@@ -18,6 +18,7 @@ export interface InventoryItem {
   price?: number;
   discountPercentage?: number;
   finalPrice?: number;
+  imageUrl?: string;
 }
 
 export interface InventorySummary {
