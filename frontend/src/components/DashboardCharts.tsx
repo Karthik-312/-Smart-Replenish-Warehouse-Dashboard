@@ -16,6 +16,35 @@ import type { InventoryItem, InventorySummary } from '../api/inventory';
 interface DashboardChartsProps {
   items: InventoryItem[];
   summary: InventorySummary;
+  loading?: boolean;
+}
+
+function ChartCardSkeleton({ tall }: { tall?: boolean }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+      <div className="mb-4 h-4 w-48 animate-pulse rounded bg-slate-200 dark:bg-slate-600" />
+      <div
+        className={`flex w-full items-end justify-center gap-3 px-4 ${tall ? 'h-[250px]' : 'h-[220px]'}`}
+      >
+        <div className="h-[45%] w-12 animate-pulse rounded-t-lg bg-slate-200 dark:bg-slate-600" />
+        <div className="h-[70%] w-12 animate-pulse rounded-t-lg bg-slate-200 dark:bg-slate-600" />
+        <div className="h-[55%] w-12 animate-pulse rounded-t-lg bg-slate-200 dark:bg-slate-600" />
+        <div className="h-[85%] w-12 animate-pulse rounded-t-lg bg-slate-200 dark:bg-slate-600" />
+        <div className="hidden h-[40%] w-12 animate-pulse rounded-t-lg bg-slate-200 dark:bg-slate-600 sm:block" />
+      </div>
+    </div>
+  );
+}
+
+function PieChartSkeleton() {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+      <div className="mb-4 h-4 w-44 animate-pulse rounded bg-slate-200 dark:bg-slate-600" />
+      <div className="flex h-[220px] items-center justify-center">
+        <div className="h-36 w-36 animate-pulse rounded-full bg-slate-200 ring-[14px] ring-slate-100 dark:bg-slate-600 dark:ring-slate-700" />
+      </div>
+    </div>
+  );
 }
 
 const STATUS_COLORS = {
@@ -24,7 +53,19 @@ const STATUS_COLORS = {
   'Out of Stock': '#ef4444',
 };
 
-export default function DashboardCharts({ items, summary }: DashboardChartsProps) {
+function ChartsSkeleton() {
+  return (
+    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+      <PieChartSkeleton />
+      <ChartCardSkeleton />
+      <div className="md:col-span-2">
+        <ChartCardSkeleton tall />
+      </div>
+    </div>
+  );
+}
+
+export default function DashboardCharts({ items, summary, loading = false }: DashboardChartsProps) {
   const statusData = useMemo(() => [
     { name: 'Healthy', value: summary.totalItems - summary.lowStockItems - summary.outOfStockItems },
     { name: 'Low', value: summary.lowStockItems },
@@ -52,6 +93,7 @@ export default function DashboardCharts({ items, summary }: DashboardChartsProps
       }));
   }, [items]);
 
+  if (loading) return <ChartsSkeleton />;
   if (items.length === 0) return null;
 
   return (

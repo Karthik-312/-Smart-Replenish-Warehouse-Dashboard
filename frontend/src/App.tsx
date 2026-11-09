@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Boxes, Download, Layers, LogIn, LogOut, Moon, ScanBarcode, Sun, Zap } from 'lucide-react';
 import {
   adjustStock,
@@ -87,6 +87,12 @@ function AppContent() {
   // Scanner state
   const [showScanner, setShowScanner] = useState(false);
 
+  const inventorySectionRef = useRef<HTMLElement>(null);
+  const [alertBannerSnoozed, setAlertBannerSnoozed] = useState(false);
+  const [alertBannerDismissed, setAlertBannerDismissed] = useState(
+    () => sessionStorage.getItem('stockpulse-alert-banner-dismissed') === '1',
+  );
+
   // Confirm dialog state
   const [confirmState, setConfirmState] = useState<{
     open: boolean;
@@ -141,6 +147,29 @@ function AppContent() {
     () => allItems.filter((item) => item.status === 'LOW' || item.status === 'OUT_OF_STOCK'),
     [allItems],
   );
+
+  const showAlertBanner =
+    !loading && alertItems.length > 0 && !alertBannerSnoozed && !alertBannerDismissed;
+
+  const handleStatusCardFilter = useCallback((status: 'LOW' | 'OUT_OF_STOCK') => {
+    setFilters((prev) => ({
+      ...prev,
+      status: prev.status === status ? 'ALL' : status,
+    }));
+    setPage(0);
+    window.setTimeout(() => {
+      inventorySectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
+  }, []);
+
+  const handleDismissAlertBanner = useCallback(() => {
+    sessionStorage.setItem('stockpulse-alert-banner-dismissed', '1');
+    setAlertBannerDismissed(true);
+  }, []);
+
+  const handleSnoozeAlertBanner = useCallback(() => {
+    setAlertBannerSnoozed(true);
+  }, []);
 
   const handleAdjust = async (id: number, delta: number) => {
     if (!user) return;
@@ -306,7 +335,7 @@ function AppContent() {
                   className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:from-indigo-700 hover:to-violet-700"
                 >
                   <LogIn className="h-4 w-4" />
-                  <span className="hidden sm:inline">Login to Edit</span>
+                  <span className="hidden sm:inline">Login</span>
                   <span className="sm:hidden text-xs">Login</span>
                 </button>
               )}
@@ -339,13 +368,40 @@ function AppContent() {
         </div>
       </header>
 
+      {!isLoggedIn && (
+        <div className="border-b border-slate-200/80 bg-slate-50/95 dark:border-slate-700/80 dark:bg-slate-900/60">
+          <p className="mx-auto max-w-7xl px-4 py-2 text-center text-sm text-slate-600 dark:text-slate-400">
+            Viewing as guest —{' '}
+            <button
+              type="button"
+              onClick={() => setShowLogin(true)}
+              className="font-medium text-indigo-600 underline-offset-2 hover:underline dark:text-indigo-400"
+            >
+              log in
+            </button>{' '}
+            to edit stock.
+          </p>
+        </div>
+      )}
+
       <main className="mx-auto max-w-7xl space-y-6 sm:space-y-8 px-3 py-6 sm:px-6 sm:py-8 lg:px-8">
-        {!loading && <LowStockBanner items={alertItems} />}
+        {showAlertBanner && (
+          <LowStockBanner
+            items={alertItems}
+            onDismiss={handleDismissAlertBanner}
+            onSnooze={handleSnoozeAlertBanner}
+          />
+        )}
 
-        <StatusOverview summary={summary} loading={loading} />
+        <StatusOverview
+          summary={summary}
+          loading={loading}
+          activeStatus={filters.status}
+          onFilterByStatus={handleStatusCardFilter}
+        />
 
-        {!loading && allItems.length > 0 && (
-          <DashboardCharts items={allItems} summary={summary} />
+        {(loading || allItems.length > 0) && (
+          <DashboardCharts items={allItems} summary={summary} loading={loading} />
         )}
 
         {canEdit && (
@@ -360,7 +416,7 @@ function AppContent() {
           totalCount={allItems.length}
         />
 
-        <section>
+        <section ref={inventorySectionRef} className="scroll-mt-24">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Boxes className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
