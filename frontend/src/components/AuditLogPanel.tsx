@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Clock, X, ArrowDown, ArrowUp, Pencil, Plus, Trash2 } from 'lucide-react';
 import { fetchItemHistory, type AuditLogEntry, type InventoryItem } from '../api/inventory';
+import Pagination from './Pagination';
+import { useEscapeKey } from '../hooks/useEscapeKey';
 
 interface AuditLogPanelProps {
   item: InventoryItem;
@@ -21,22 +23,42 @@ const actionColors = {
   DELETE: 'text-rose-600 bg-rose-100 dark:text-rose-400 dark:bg-rose-900/40',
 };
 
+const HISTORY_PAGE_SIZE = 10;
+
 export default function AuditLogPanel({ item, onClose }: AuditLogPanelProps) {
   const [entries, setEntries] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+
+  useEscapeKey(true, onClose);
+
+  const loadPage = useCallback(async (pageIndex: number) => {
+    setLoading(true);
+    try {
+      const data = await fetchItemHistory(item.id, pageIndex, HISTORY_PAGE_SIZE);
+      setEntries(data.content);
+      setTotalPages(data.totalPages);
+    } catch {
+      setEntries([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [item.id]);
 
   useEffect(() => {
-    void fetchItemHistory(item.id).then((data) => {
-      setEntries(data.content);
-      setLoading(false);
-    }).catch(() => setLoading(false));
+    setPage(0);
   }, [item.id]);
+
+  useEffect(() => {
+    void loadPage(page);
+  }, [loadPage, page]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-end">
       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative h-full w-full max-w-md overflow-y-auto border-l border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800">
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4 dark:border-slate-700 dark:bg-slate-800">
+      <div className="relative flex h-full w-full max-w-md flex-col border-l border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800">
+        <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-slate-700">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-100 dark:bg-indigo-900/40">
               <Clock className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
@@ -55,9 +77,13 @@ export default function AuditLogPanel({ item, onClose }: AuditLogPanelProps) {
           </button>
         </div>
 
-        <div className="p-5">
+        <div className="flex-1 overflow-y-auto p-5">
           {loading ? (
-            <p className="text-center text-sm text-slate-500 dark:text-slate-400">Loading history...</p>
+            <div className="space-y-3">
+              {Array.from({ length: 4 }, (_, i) => (
+                <div key={i} className="h-20 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-700" />
+              ))}
+            </div>
           ) : entries.length === 0 ? (
             <p className="text-center text-sm text-slate-500 dark:text-slate-400">No history yet.</p>
           ) : (
@@ -89,9 +115,7 @@ export default function AuditLogPanel({ item, onClose }: AuditLogPanelProps) {
                             entry.details || entry.action
                           )}
                         </p>
-                        <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                          by {entry.changedBy}
-                        </p>
+                        <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">by {entry.changedBy}</p>
                         <p className="text-xs text-slate-400 dark:text-slate-500">
                           {new Date(entry.timestamp).toLocaleString()}
                         </p>
@@ -103,6 +127,11 @@ export default function AuditLogPanel({ item, onClose }: AuditLogPanelProps) {
             </div>
           )}
         </div>
+        {!loading && totalPages > 1 && (
+          <div className="shrink-0 border-t border-slate-200 px-2 py-2 dark:border-slate-700">
+            <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
+          </div>
+        )}
       </div>
     </div>
   );

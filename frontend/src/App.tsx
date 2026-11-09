@@ -6,6 +6,7 @@ import {
   createItem,
   deleteItem,
   fetchInventory,
+  fetchInventoryMatchingFilters,
   fetchInventoryPaged,
   fetchSummary,
   logout,
@@ -29,6 +30,12 @@ import PurchaseOrders from './components/PurchaseOrders';
 import LowStockBanner from './components/LowStockBanner';
 import Pagination from './components/Pagination';
 import StatusOverview, { RefreshButton } from './components/StatusOverview';
+import SectionNav, { type SectionId } from './components/SectionNav';
+import CommandPalette from './components/CommandPalette';
+import InventoryTableSkeleton from './components/InventoryTableSkeleton';
+import LoadErrorBanner from './components/LoadErrorBanner';
+import { useDebouncedValue } from './hooks/useDebouncedValue';
+import { clearAuth, loadAuth, saveAuth } from './utils/authStorage';
 import SupplierManagement from './components/SupplierManagement';
 import WarehouseManagement from './components/WarehouseManagement';
 import { ToastProvider, useToast } from './components/Toast';
@@ -57,7 +64,17 @@ function AppContent() {
   const [creating, setCreating] = useState(false);
   const [adjustingId, setAdjustingId] = useState<number | null>(null);
   const [filters, setFilters] = useState<InventoryFilterState>(defaultFilters);
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const [searchInput, setSearchInput] = useState('');
+  const debouncedSearch = useDebouncedValue(searchInput, 400);
+  const [user, setUser] = useState<AuthUser | null>(() => loadAuth());
+  const [hasBootstrapped, setHasBootstrapped] = useState(false);
+  const hasBootstrappedRef = useRef(false);
+  const [tableRefreshing, setTableRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
+  const [highlightItemId, setHighlightItemId] = useState<number | null>(null);
+  const [exportingCsv, setExportingCsv] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [dark, setDark] = useState(() => {
     const saved = localStorage.getItem('stockpulse-theme');
@@ -112,8 +129,14 @@ function AppContent() {
   const canEdit = isLoggedIn && (user.role === 'ADMIN' || user.role === 'MANAGER');
   const canDelete = isLoggedIn && user.role === 'ADMIN';
 
+  useEffect(() => {
+    setFilters((prev) => (prev.search === debouncedSearch ? prev : { ...prev, search: debouncedSearch }));
+  }, [debouncedSearch]);
+
   const loadData = useCallback(async () => {
-    setLoading(true);
+    setLoadError(null);
+    if (!hasBootstrappedRef.current) setLoading(true);
+    else setTableRefreshing(true);
     try {
       const [pagedResult, overview, all] = await Promise.all([
         fetchInventoryPaged(page, pageSize, filters.search, filters.category, filters.status),
@@ -125,10 +148,16 @@ function AppContent() {
       setTotalElements(pagedResult.totalElements);
       setSummary(overview);
       setAllItems(all);
+      setLastUpdatedAt(new Date());
     } catch (err) {
-      toast(err instanceof Error ? err.message : 'Failed to load inventory', 'error');
+      const message = err instanceof Error ? err.message : 'Failed to load inventory';
+      setLoadError(message);
+      toast(message, 'error');
     } finally {
       setLoading(false);
+      setTableRefreshing(false);
+      hasBootstrappedRef.current = true;
+      setHasBootstrapped(true);
     }
   }, [toast, page, filters]);
 
@@ -260,11 +289,13 @@ function AppContent() {
 
   const executeBulkUpdate = async (delta: number) => {
     if (!user) return;
+    const count = selectedIds.size;
+    const ids = Array.from(selectedIds);
     try {
-      await bulkAdjustStock(Array.from(selectedIds), delta, user.token);
+      await bulkAdjustStock(ids, delta, user.token);
       await loadData();
       setSelectedIds(new Set());
-      toast(`Stock updated for ${selectedIds.size} item${selectedIds.size > 1 ? 's' : ''}`, 'success');
+      toast(`Stock updated for ${count} item${count > 1 ? 's' : ''}`, 'success');
     } catch (err) {
       toast(err instanceof Error ? err.message : 'Bulk update failed', 'error');
     }
@@ -272,6 +303,7 @@ function AppContent() {
 
   const handleLogin = (authUser: AuthUser) => {
     setUser(authUser);
+    saveAuth(authUser);
     setShowLogin(false);
     toast(`Welcome, ${authUser.name || authUser.email}!`, 'success');
   };
@@ -280,11 +312,62 @@ function AppContent() {
     if (user) {
       await logout(user.token).catch(() => {});
     }
+    clearAuth();
     setUser(null);
     setSelectedIds(new Set());
     setShowScanner(false);
     toast('Logged out successfully', 'info');
   };
+
+  const scrollToSection = useCallback((id: SectionId) => {
+    const el = document.getElementById(`section-${id}`);
+    el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
+
+  const handleExportCsv = useCallback(async () => {
+    const hasActiveFilters =
+      filters.search !== '' || filters.category !== 'ALL' || filters.status !== 'ALL';
+    setExportingCsv(true);
+    try {
+      const rows = hasActiveFilters
+        ? await fetchInventoryMatchingFilters(
+            filters.search,
+            filters.category,
+            filters.status,
+            Math.max(totalElements, 5000),
+          )
+        : allItems;
+      exportToCsv(rows, hasActiveFilters ? 'filtered' : 'all');
+      toast(`Exported ${rows.length} row${rows.length === 1 ? '' : 's'}`, 'success');
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Export failed', 'error');
+    } finally {
+      setExportingCsv(false);
+    }
+  }, [allItems, filters, toast, totalElements]);
+
+  const focusInventoryItem = useCallback((item: InventoryItem) => {
+    scrollToSection('inventory');
+    setHighlightItemId(item.id);
+    window.setTimeout(() => {
+      document.getElementById(`inventory-row-${item.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 300);
+    window.setTimeout(() => setHighlightItemId(null), 4000);
+  }, [scrollToSection]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setShowCommandPalette((open) => !open);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  const isViewer = isLoggedIn && user.role === 'VIEWER';
+  const showInitialLoad = loading && !hasBootstrapped;
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-gradient-to-br from-slate-100 via-slate-50 to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-900">
@@ -356,13 +439,25 @@ function AppContent() {
               >
                 {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </button>
-              {wsConnected && (
-                <span className="hidden sm:flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:ring-emerald-700">
-                  <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
-                  Live
+              <span
+                className={`hidden items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium ring-1 ring-inset sm:flex ${
+                  wsConnected
+                    ? 'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:ring-emerald-700'
+                    : 'bg-slate-100 text-slate-600 ring-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:ring-slate-600'
+                }`}
+                title={wsConnected ? 'WebSocket connected' : 'Polling every 30s'}
+              >
+                <span
+                  className={`h-2 w-2 rounded-full ${wsConnected ? 'animate-pulse bg-emerald-500' : 'bg-slate-400'}`}
+                />
+                {wsConnected ? 'Live' : 'Polling'}
+              </span>
+              {lastUpdatedAt && (
+                <span className="hidden text-[10px] text-slate-400 lg:inline dark:text-slate-500">
+                  Updated {lastUpdatedAt.toLocaleTimeString()}
                 </span>
               )}
-              <RefreshButton onClick={() => void loadData()} loading={loading} />
+              <RefreshButton onClick={() => void loadData()} loading={loading || tableRefreshing} />
             </div>
           </div>
         </div>
@@ -384,25 +479,55 @@ function AppContent() {
         </div>
       )}
 
+      <SectionNav isLoggedIn={isLoggedIn} onNavigate={scrollToSection} />
+
+      {isViewer && (
+        <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-center text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
+          View-only access — contact an admin if you need to edit stock or purchase orders.
+        </div>
+      )}
+
       <main className="mx-auto max-w-7xl space-y-6 sm:space-y-8 px-3 py-6 sm:px-6 sm:py-8 lg:px-8">
+        {loadError && (
+          <LoadErrorBanner
+            message={loadError}
+            onRetry={() => void loadData()}
+            retrying={loading || tableRefreshing}
+          />
+        )}
+
         {showAlertBanner && (
           <LowStockBanner
             items={alertItems}
             onDismiss={handleDismissAlertBanner}
             onSnooze={handleSnoozeAlertBanner}
+            onFilterLowStock={() => {
+              setFilters((f) => ({ ...f, status: 'LOW' }));
+              setPage(0);
+              scrollToSection('inventory');
+            }}
+            onGoToPurchaseOrders={() => scrollToSection('purchase-orders')}
+            onItemForecast={(item) => setForecastItem(item)}
           />
         )}
 
         <StatusOverview
           summary={summary}
-          loading={loading}
+          loading={showInitialLoad}
           activeStatus={filters.status}
           onFilterByStatus={handleStatusCardFilter}
         />
 
-        {(loading || allItems.length > 0) && (
-          <DashboardCharts items={allItems} summary={summary} loading={loading} />
-        )}
+        <div id="section-charts" className="scroll-mt-32 space-y-2">
+          {(showInitialLoad || allItems.length > 0) && (
+            <DashboardCharts items={allItems} summary={summary} loading={showInitialLoad} />
+          )}
+          {allItems.length > 0 && (
+            <p className="text-center text-xs text-slate-400 dark:text-slate-500">
+              Charts reflect all {allItems.length} catalog items · table view may be filtered or paged
+            </p>
+          )}
+        </div>
 
         {canEdit && (
           <AddItemForm categories={categories} onSubmit={handleCreate} submitting={creating} />
@@ -410,13 +535,22 @@ function AppContent() {
 
         <InventoryFilters
           filters={filters}
+          searchInput={searchInput}
+          onSearchInputChange={setSearchInput}
           categories={categories}
-          onChange={setFilters}
+          onChange={(next) => {
+            setFilters(next);
+            if (next.search !== searchInput) setSearchInput(next.search);
+          }}
           resultCount={totalElements}
-          totalCount={allItems.length}
+          globalTotalItems={allItems.length}
         />
 
-        <section ref={inventorySectionRef} className="scroll-mt-24">
+        <section
+          id="section-inventory"
+          ref={inventorySectionRef}
+          className="scroll-mt-32"
+        >
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Boxes className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
@@ -433,41 +567,52 @@ function AppContent() {
                   Bulk ({selectedIds.size})
                 </button>
               )}
-              {items.length > 0 && (
+              {(items.length > 0 || totalElements > 0) && (
                 <button
                   type="button"
-                  onClick={() => exportToCsv(allItems)}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                  disabled={exportingCsv}
+                  onClick={() => void handleExportCsv()}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 sm:text-sm"
                 >
                   <Download className="h-4 w-4" />
-                  <span className="hidden sm:inline">Export CSV</span>
+                  <span className="hidden sm:inline">
+                    {exportingCsv ? 'Exporting…' : 'Export CSV (filtered)'}
+                  </span>
                   <span className="sm:hidden">CSV</span>
                 </button>
               )}
             </div>
           </div>
-          {loading ? (
-            <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
-              Loading inventory...
-            </div>
+          {showInitialLoad ? (
+            <InventoryTableSkeleton rows={pageSize} />
           ) : (
             <>
-              <InventoryTable
-                items={items}
-                onAdjust={handleAdjust}
-                onEdit={(item) => setEditingItem(item)}
-                onDelete={handleDeleteRequest}
-                onHistory={(item) => setHistoryItem(item)}
-                onForecast={(item) => setForecastItem(item)}
-                adjustingId={adjustingId}
-                readonly={!canEdit}
-                canDelete={canDelete}
-                selectedIds={selectedIds}
-                onSelectionChange={setSelectedIds}
-                hasFilters={
-                  filters.search !== '' || filters.category !== 'ALL' || filters.status !== 'ALL'
-                }
-              />
+              <div
+                className={`relative transition-opacity ${tableRefreshing ? 'pointer-events-none opacity-50' : ''}`}
+              >
+                {tableRefreshing && (
+                  <div className="absolute inset-x-0 top-0 z-10 h-1 overflow-hidden rounded-t-2xl bg-slate-100 dark:bg-slate-700">
+                    <div className="h-full w-1/3 animate-pulse bg-indigo-500" />
+                  </div>
+                )}
+                <InventoryTable
+                  items={items}
+                  onAdjust={handleAdjust}
+                  onEdit={(item) => setEditingItem(item)}
+                  onDelete={handleDeleteRequest}
+                  onHistory={(item) => setHistoryItem(item)}
+                  onForecast={(item) => setForecastItem(item)}
+                  adjustingId={adjustingId}
+                  readonly={!canEdit}
+                  canDelete={canDelete}
+                  selectedIds={selectedIds}
+                  onSelectionChange={setSelectedIds}
+                  highlightItemId={highlightItemId}
+                  hasFilters={
+                    filters.search !== '' || filters.category !== 'ALL' || filters.status !== 'ALL'
+                  }
+                />
+              </div>
               <Pagination
                 currentPage={page}
                 totalPages={totalPages}
@@ -477,9 +622,7 @@ function AppContent() {
           )}
         </section>
 
-        {isLoggedIn && (
-          <PurchaseOrders token={user.token} canEdit={canEdit} />
-        )}
+        <PurchaseOrders token={user?.token} canEdit={canEdit} />
 
         {isLoggedIn && (
           <WarehouseManagement token={user.token} canEdit={canEdit} canDelete={canDelete} />
@@ -541,6 +684,19 @@ function AppContent() {
           onClose={() => setShowScanner(false)}
         />
       )}
+
+      <CommandPalette
+        open={showCommandPalette}
+        items={allItems}
+        onClose={() => setShowCommandPalette(false)}
+        onSelectItem={focusInventoryItem}
+        onFilterBySku={(sku) => {
+          setSearchInput(sku);
+          setFilters((f) => ({ ...f, search: sku }));
+          setPage(0);
+          scrollToSection('inventory');
+        }}
+      />
 
       <ConfirmDialog
         open={confirmState.open}

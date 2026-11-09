@@ -71,7 +71,7 @@ export default function WarehouseManagement({ token, canEdit, canDelete }: Props
   };
 
   return (
-    <section className="space-y-4">
+    <section id="section-warehouses" className="scroll-mt-32 space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Building2 className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />

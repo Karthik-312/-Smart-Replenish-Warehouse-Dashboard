@@ -6,9 +6,19 @@ interface LowStockBannerProps {
   items: InventoryItem[];
   onDismiss: () => void;
   onSnooze: () => void;
+  onFilterLowStock?: () => void;
+  onGoToPurchaseOrders?: () => void;
+  onItemForecast?: (item: InventoryItem) => void;
 }
 
-export default function LowStockBanner({ items, onDismiss, onSnooze }: LowStockBannerProps) {
+export default function LowStockBanner({
+  items,
+  onDismiss,
+  onSnooze,
+  onFilterLowStock,
+  onGoToPurchaseOrders,
+  onItemForecast,
+}: LowStockBannerProps) {
   const outOfStock = items.filter((item) => item.status === 'OUT_OF_STOCK');
   const lowStock = items.filter((item) => item.status === 'LOW');
 
@@ -25,16 +35,24 @@ export default function LowStockBanner({ items, onDismiss, onSnooze }: LowStockB
           title={`${outOfStock.length} item${outOfStock.length === 1 ? '' : 's'} out of stock — reorder now`}
           onDismiss={onDismiss}
           onSnooze={onSnooze}
+          actions={
+            <>
+              {onGoToPurchaseOrders && (
+                <button type="button" onClick={onGoToPurchaseOrders} className="text-xs font-semibold text-rose-800 underline-offset-2 hover:underline dark:text-rose-200">
+                  View purchase orders
+                </button>
+              )}
+            </>
+          }
         >
           <ul className="mt-2 flex flex-wrap gap-2">
             {outOfStock.map((item) => (
-              <li
-                key={item.id}
-                className="inline-flex items-center gap-1 rounded-full bg-white/80 px-3 py-1 text-xs font-medium text-rose-800 ring-1 ring-rose-200 dark:bg-slate-800/80 dark:text-rose-300 dark:ring-rose-700"
-              >
-                <span className="font-mono">{item.sku}</span>
-                <span className="text-rose-400">·</span>
-                {item.name}
+              <li key={item.id}>
+                <ItemChip
+                  item={item}
+                  tone="rose"
+                  onForecast={onItemForecast}
+                />
               </li>
             ))}
           </ul>
@@ -50,19 +68,18 @@ export default function LowStockBanner({ items, onDismiss, onSnooze }: LowStockB
           subtitle="These products need replenishment before they run out."
           onDismiss={onDismiss}
           onSnooze={onSnooze}
+          actions={
+            onFilterLowStock ? (
+              <button type="button" onClick={onFilterLowStock} className="text-xs font-semibold text-amber-900 underline-offset-2 hover:underline dark:text-amber-200">
+                View in inventory
+              </button>
+            ) : null
+          }
         >
           <ul className="mt-2 flex flex-wrap gap-2">
             {lowStock.map((item) => (
-              <li
-                key={item.id}
-                className="inline-flex items-center gap-1 rounded-full bg-white/80 px-3 py-1 text-xs font-medium text-amber-900 ring-1 ring-amber-200 dark:bg-slate-800/80 dark:text-amber-300 dark:ring-amber-700"
-              >
-                <span className="font-mono">{item.sku}</span>
-                <span className="text-amber-400">·</span>
-                {item.name}
-                <span className="text-amber-600 dark:text-amber-400">
-                  ({item.currentStock}/{item.minThreshold})
-                </span>
+              <li key={item.id}>
+                <ItemChip item={item} tone="amber" onForecast={onItemForecast} showStock />
               </li>
             ))}
           </ul>
@@ -81,6 +98,7 @@ function AlertBlock({
   children,
   onDismiss,
   onSnooze,
+  actions,
 }: {
   tone: 'rose' | 'amber';
   icon: typeof PackageX;
@@ -90,6 +108,7 @@ function AlertBlock({
   children: ReactNode;
   onDismiss: () => void;
   onSnooze: () => void;
+  actions?: ReactNode;
 }) {
   const styles =
     tone === 'rose'
@@ -129,6 +148,7 @@ function AlertBlock({
             <div>
               <h3 className={`font-semibold ${styles.title}`}>{title}</h3>
               {subtitle && <p className={`mt-1 text-sm ${styles.subtitle}`}>{subtitle}</p>}
+              {actions && <div className="mt-2">{actions}</div>}
             </div>
             <div className="flex shrink-0 items-center gap-1">
               <button
@@ -155,5 +175,40 @@ function AlertBlock({
         </div>
       </div>
     </div>
+  );
+}
+
+function ItemChip({
+  item,
+  tone,
+  showStock,
+  onForecast,
+}: {
+  item: InventoryItem;
+  tone: 'rose' | 'amber';
+  showStock?: boolean;
+  onForecast?: (item: InventoryItem) => void;
+}) {
+  const chipClass =
+    tone === 'rose'
+      ? 'text-rose-800 ring-rose-200 dark:text-rose-300 dark:ring-rose-700'
+      : 'text-amber-900 ring-amber-200 dark:text-amber-300 dark:ring-amber-700';
+
+  return (
+    <button
+      type="button"
+      onClick={() => onForecast?.(item)}
+      className={`inline-flex items-center gap-1 rounded-full bg-white/80 px-3 py-1 text-xs font-medium ring-1 transition hover:ring-2 dark:bg-slate-800/80 ${chipClass}`}
+      title={onForecast ? 'Open demand forecast' : undefined}
+    >
+      <span className="font-mono">{item.sku}</span>
+      <span className="opacity-50">·</span>
+      {item.name}
+      {showStock && (
+        <span className="opacity-80">
+          ({item.currentStock}/{item.minThreshold})
+        </span>
+      )}
+    </button>
   );
 }

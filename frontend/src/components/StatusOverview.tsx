@@ -53,7 +53,7 @@ export default function StatusOverview({
     key === 'total' ? 'totalItems' : key;
 
   return (
-    <section>
+    <section id="section-overview" className="scroll-mt-32">
       <div className="mb-4 flex items-center gap-2">
         <Activity className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
         <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Status Overview</h2>

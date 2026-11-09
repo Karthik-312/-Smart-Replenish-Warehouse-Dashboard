@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useEscapeKey } from '../hooks/useEscapeKey';
 import { GoogleLogin, type CredentialResponse } from '@react-oauth/google';
 import { Shield, X } from 'lucide-react';
 import { googleLogin, type AuthUser } from '../api/inventory';
@@ -11,6 +12,8 @@ interface LoginModalProps {
 export default function LoginModal({ onLogin, onClose }: LoginModalProps) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEscapeKey(true, onClose);
 
   const handleGoogleSuccess = async (response: CredentialResponse) => {
     if (!response.credential) {

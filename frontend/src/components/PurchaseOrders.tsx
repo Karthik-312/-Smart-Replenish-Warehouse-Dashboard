@@ -9,7 +9,7 @@ import {
 import { useToast } from './Toast';
 
 interface Props {
-  token: string;
+  token?: string;
   canEdit: boolean;
 }
 
@@ -33,7 +33,7 @@ const NEXT_LABEL: Partial<Record<PurchaseOrderStatus, string>> = {
   ORDERED: 'Mark Received',
 };
 
-export default function PurchaseOrders({ token, canEdit }: Props) {
+export default function PurchaseOrders({ token = '', canEdit }: Props) {
   const { toast } = useToast();
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -77,7 +77,7 @@ export default function PurchaseOrders({ token, canEdit }: Props) {
   const pendingCount = orders.filter((o) => o.status === 'PENDING').length;
 
   return (
-    <section className="space-y-4">
+    <section id="section-purchase-orders" className="scroll-mt-32 space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <ClipboardList className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />

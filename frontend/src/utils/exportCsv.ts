@@ -14,7 +14,7 @@ function escapeCsvField(value: string | number): string {
   return str;
 }
 
-export function exportToCsv(items: InventoryItem[]): void {
+export function exportToCsv(items: InventoryItem[], filenameTag = 'all'): void {
   const headers = ['Name', 'SKU', 'Category', 'Current Stock', 'Min Threshold', 'Status', 'Price', 'Discount %', 'Final Price'];
 
   const rows = items.map((item) => [
@@ -36,7 +36,7 @@ export function exportToCsv(items: InventoryItem[]): void {
 
   const link = document.createElement('a');
   link.href = url;
-  link.download = `stockpulse-inventory-${new Date().toISOString().slice(0, 10)}.csv`;
+  link.download = `stockpulse-inventory-${filenameTag}-${new Date().toISOString().slice(0, 10)}.csv`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);

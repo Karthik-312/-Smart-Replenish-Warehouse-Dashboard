@@ -96,6 +96,17 @@ export async function fetchInventoryPaged(
   return handleResponse<PagedResponse<InventoryItem>>(response);
 }
 
+/** Fetch all rows matching filters (for CSV export), up to `maxSize`. */
+export async function fetchInventoryMatchingFilters(
+  search?: string,
+  category?: string,
+  status?: string,
+  maxSize = 5000,
+): Promise<InventoryItem[]> {
+  const first = await fetchInventoryPaged(0, maxSize, search, category, status);
+  return first.content;
+}
+
 export async function fetchSummary(): Promise<InventorySummary> {
   const response = await fetch(`${API_BASE}/summary`);
   return handleResponse<InventorySummary>(response);
