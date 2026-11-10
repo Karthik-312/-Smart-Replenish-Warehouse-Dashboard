@@ -107,7 +107,7 @@ function ItemActions({
         disabled={readonly || isAdjusting || item.currentStock <= 0}
         onClick={() => void onAdjust(item.id, -1)}
         title={readonly ? 'Login to enable' : 'Simulate sale'}
-        className="inline-flex items-center rounded-lg border border-slate-200 bg-white p-1.5 text-slate-700 transition hover:border-rose-200 hover:bg-rose-50 disabled:opacity-40 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200"
+        className="action-icon-btn action-icon-btn--minus inline-flex items-center rounded-lg border border-slate-200 bg-white p-1.5 text-slate-700 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200"
       >
         <Minus className="h-3.5 w-3.5" />
       </button>
@@ -116,7 +116,7 @@ function ItemActions({
         disabled={readonly || isAdjusting}
         onClick={() => void onAdjust(item.id, 1)}
         title={readonly ? 'Login to enable' : 'Simulate intake'}
-        className="inline-flex items-center rounded-lg border border-slate-200 bg-white p-1.5 text-slate-700 transition hover:border-emerald-200 hover:bg-emerald-50 disabled:opacity-40 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200"
+        className="action-icon-btn action-icon-btn--plus inline-flex items-center rounded-lg border border-slate-200 bg-white p-1.5 text-slate-700 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200"
       >
         <Plus className="h-3.5 w-3.5" />
       </button>
@@ -130,20 +130,35 @@ function ItemActions({
         disabled={readonly}
         onClick={() => onEdit(item)}
         title={readonly ? 'Login to enable' : 'Edit item'}
-        className="inline-flex items-center rounded-lg border border-slate-200 bg-white p-1.5 disabled:opacity-40 dark:border-slate-600 dark:bg-slate-700"
+        className="action-icon-btn action-icon-btn--edit inline-flex items-center rounded-lg border border-slate-200 bg-white p-1.5 text-slate-700 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200"
       >
         <Pencil className="h-3.5 w-3.5" />
       </button>
-      <button type="button" onClick={() => onHistory(item)} title="View history" className="inline-flex rounded-lg border border-slate-200 bg-white p-1.5 dark:border-slate-600 dark:bg-slate-700">
+      <button
+        type="button"
+        onClick={() => onHistory(item)}
+        title="View history"
+        className="action-icon-btn action-icon-btn--history inline-flex items-center rounded-lg border border-slate-200 bg-white p-1.5 text-slate-700 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200"
+      >
         <Clock className="h-3.5 w-3.5" />
       </button>
       {onForecast && (
-        <button type="button" onClick={() => onForecast(item)} title="Demand forecast" className="inline-flex rounded-lg border border-slate-200 bg-white p-1.5 dark:border-slate-600 dark:bg-slate-700">
+        <button
+          type="button"
+          onClick={() => onForecast(item)}
+          title="Demand forecast"
+          className="action-icon-btn action-icon-btn--forecast inline-flex items-center rounded-lg border border-slate-200 bg-white p-1.5 text-slate-700 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200"
+        >
           <BarChart3 className="h-3.5 w-3.5" />
         </button>
       )}
       {canDelete && (
-        <button type="button" onClick={() => onDelete(item)} title="Delete item" className="inline-flex rounded-lg border border-slate-200 bg-white p-1.5 dark:border-slate-600 dark:bg-slate-700">
+        <button
+          type="button"
+          onClick={() => onDelete(item)}
+          title="Delete item"
+          className="action-icon-btn action-icon-btn--delete inline-flex items-center rounded-lg border border-slate-200 bg-white p-1.5 text-slate-700 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200"
+        >
           <Trash2 className="h-3.5 w-3.5" />
         </button>
       )}

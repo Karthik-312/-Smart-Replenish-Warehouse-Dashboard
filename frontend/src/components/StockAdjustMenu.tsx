@@ -22,7 +22,7 @@ export default function StockAdjustMenu({ currentStock, disabled, onAdjust }: St
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="inline-flex items-center rounded-lg border border-slate-200 bg-white p-1.5 text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-300"
+        className="action-icon-btn action-icon-btn--more inline-flex items-center rounded-lg border border-slate-200 bg-white p-1.5 text-slate-600 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-300"
         title="More stock actions"
       >
         <MoreHorizontal className="h-3.5 w-3.5" />

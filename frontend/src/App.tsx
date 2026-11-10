@@ -23,7 +23,8 @@ import DashboardCharts from './components/DashboardCharts';
 import ConfirmDialog from './components/ConfirmDialog';
 import EditItemModal from './components/EditItemModal';
 import ForecastPanel from './components/ForecastPanel';
-import InventoryFilters, { type InventoryFilterState } from './components/InventoryFilters';
+import InventoryFilters, { type InventoryFilterState, type StatusFilter } from './components/InventoryFilters';
+import InventoryQuickStatusFilter from './components/InventoryQuickStatusFilter';
 import InventoryTable from './components/InventoryTable';
 import LoginModal from './components/LoginModal';
 import PurchaseOrders from './components/PurchaseOrders';
@@ -533,25 +534,57 @@ function AppContent() {
           <AddItemForm categories={categories} onSubmit={handleCreate} submitting={creating} />
         )}
 
-        <InventoryFilters
-          filters={filters}
-          searchInput={searchInput}
-          onSearchInputChange={setSearchInput}
-          categories={categories}
-          onChange={(next) => {
-            setFilters(next);
-            if (next.search !== searchInput) setSearchInput(next.search);
-          }}
-          resultCount={totalElements}
-          globalTotalItems={allItems.length}
-        />
-
         <section
           id="section-inventory"
           ref={inventorySectionRef}
-          className="scroll-mt-32"
+          className="scroll-mt-32 space-y-4"
         >
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <InventoryFilters
+            filters={filters}
+            searchInput={searchInput}
+            onSearchInputChange={setSearchInput}
+            categories={categories}
+            onChange={(next) => {
+              setFilters(next);
+              if (next.search !== searchInput) setSearchInput(next.search);
+            }}
+            resultCount={totalElements}
+            globalTotalItems={allItems.length}
+          />
+
+          <InventoryQuickStatusFilter
+            value={filters.status}
+            onChange={(status: StatusFilter) => {
+              setFilters((f) => ({ ...f, status }));
+              setPage(0);
+            }}
+          />
+
+          {(filters.status !== 'ALL' ||
+            filters.category !== 'ALL' ||
+            filters.search !== '') && (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm dark:border-indigo-800 dark:bg-indigo-950/40">
+              <span className="text-indigo-900 dark:text-indigo-200">
+                Filter active — showing {totalElements} of {allItems.length} products
+                {filters.status === 'LOW' && ' (low stock only)'}
+                {filters.status === 'OUT_OF_STOCK' && ' (out of stock only)'}
+                {filters.status === 'HEALTHY' && ' (healthy only)'}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchInput('');
+                  setFilters(defaultFilters);
+                  setPage(0);
+                }}
+                className="font-semibold text-indigo-700 underline-offset-2 hover:underline dark:text-indigo-300"
+              >
+                Show all products
+              </button>
+            </div>
+          )}
+
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Boxes className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
               <h2 className="text-base sm:text-lg font-semibold text-slate-800 dark:text-slate-100">Inventory List</h2>
