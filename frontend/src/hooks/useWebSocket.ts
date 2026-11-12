@@ -1,18 +1,47 @@
 import { useEffect, useRef, useState } from 'react';
 import { Client } from '@stomp/stompjs';
+import SockJS from 'sockjs-client';
 
-function deriveWsUrl(): string {
-  if (import.meta.env.VITE_WS_URL) return import.meta.env.VITE_WS_URL;
-
+/** HTTPS base of the inventory API (no path), e.g. https://stockpulse-api-haxr.onrender.com */
+function deriveApiOrigin(): string {
+  if (import.meta.env.VITE_API_ORIGIN) {
+    return import.meta.env.VITE_API_ORIGIN.replace(/\/$/, '');
+  }
   const apiBase = import.meta.env.VITE_API_BASE_URL;
   if (apiBase) {
     const url = new URL(apiBase);
-    url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
-    url.pathname = '/ws/websocket';
-    return url.toString();
+    return url.origin;
+  }
+  return 'http://localhost:8080';
+}
+
+function createStompClient(): Client {
+  const origin = deriveApiOrigin();
+
+  // Production Render still exposes STOMP over SockJS at /ws (see /ws/info).
+  // Raw brokerURL /ws/websocket does not match that unless the API adds a native endpoint.
+  const useNative = import.meta.env.VITE_WS_NATIVE === 'true';
+
+  if (useNative) {
+    const wsUrl =
+      import.meta.env.VITE_WS_URL ??
+      `${origin.replace(/^http/, 'ws')}/stomp`;
+    return new Client({
+      brokerURL: wsUrl,
+      reconnectDelay: 5000,
+      heartbeatIncoming: 10000,
+      heartbeatOutgoing: 10000,
+    });
   }
 
-  return 'ws://localhost:8080/ws/websocket';
+  const sockJsUrl = import.meta.env.VITE_SOCKJS_URL ?? `${origin}/ws`;
+
+  return new Client({
+    webSocketFactory: () => new SockJS(sockJsUrl),
+    reconnectDelay: 5000,
+    heartbeatIncoming: 10000,
+    heartbeatOutgoing: 10000,
+  });
 }
 
 const POLL_INTERVAL_MS = 30_000;
@@ -24,20 +53,17 @@ export function useWebSocket(onMessage: () => void) {
   onMessageRef.current = onMessage;
 
   useEffect(() => {
-    const wsUrl = deriveWsUrl();
-    const client = new Client({
-      brokerURL: wsUrl,
-      reconnectDelay: 5000,
-      onConnect: () => {
-        setConnected(true);
-        client.subscribe('/topic/inventory', () => {
-          onMessageRef.current();
-        });
-      },
-      onDisconnect: () => setConnected(false),
-      onStompError: () => setConnected(false),
-      onWebSocketClose: () => setConnected(false),
-    });
+    const client = createStompClient();
+
+    client.onConnect = () => {
+      setConnected(true);
+      client.subscribe('/topic/inventory', () => {
+        onMessageRef.current();
+      });
+    };
+    client.onDisconnect = () => setConnected(false);
+    client.onStompError = () => setConnected(false);
+    client.onWebSocketClose = () => setConnected(false);
 
     client.activate();
     clientRef.current = client;
@@ -47,7 +73,6 @@ export function useWebSocket(onMessage: () => void) {
     };
   }, []);
 
-  // Polling fallback when WebSocket is not connected
   useEffect(() => {
     if (connected) return;
     const id = setInterval(() => onMessageRef.current(), POLL_INTERVAL_MS);
