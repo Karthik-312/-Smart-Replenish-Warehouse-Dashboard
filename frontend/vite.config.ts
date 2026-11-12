@@ -4,6 +4,10 @@ import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+  // sockjs-client references Node's `global`, which browsers don't have
+  define: {
+    global: 'globalThis',
+  },
   plugins: [
     react(),
     tailwindcss(),
