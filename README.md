@@ -113,11 +113,21 @@ Optional (defaults are fine for most setups):
 
 ### Backend (Render)
 
+Activate the **`prod`** profile (`SPRING_PROFILES_ACTIVE=prod`). Production DB settings live in `backend/src/main/resources/application-prod.properties` (PostgreSQL / Neon — not H2).
+
 | Variable | Purpose |
 |----------|---------|
+| `SPRING_PROFILES_ACTIVE` | Set to `prod` on Render |
 | `CORS_ALLOWED_ORIGINS` | Comma-separated dashboard origins (your Vercel URL) |
 | `GOOGLE_CLIENT_ID` | Same client as frontend |
-| `DATABASE_URL` | PostgreSQL on production (optional; H2 for local) |
+| `DB_HOST` | PostgreSQL host (e.g. Neon) |
+| `DB_PORT` | Usually `5432` |
+| `DB_NAME` | Database name |
+| `DB_USERNAME` | DB user |
+| `DB_PASSWORD` | DB password |
+| `STOCKPULSE_API_KEY` | Shared secret for **ecommerce** / service calls (`X-Api-Key` on `adjust` etc.) |
+
+Local dev uses **H2** from `application.properties` — no `DB_*` required.
 
 ## Live demo
 
@@ -179,6 +189,10 @@ OpenAPI: `/swagger-ui.html` when running the backend locally.
 1. Import repo; **Root Directory:** `frontend`  
 2. Set `VITE_API_BASE_URL` and Google client env vars  
 3. Deploy  
+
+## Related
+
+- **[StockPulse Ecommerce](https://github.com/Karthik-312/Stockpulse_Ecommerce_Inventory_Dashboard)** — customer storefront; catalog and stock come from this inventory API; checkout uses `STOCKPULSE_API_KEY` when configured.
 
 ## License
 
